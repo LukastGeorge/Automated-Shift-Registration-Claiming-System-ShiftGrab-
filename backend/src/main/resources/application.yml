@@ -1,0 +1,28 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: shiftgrab-backend
+  datasource:
+    url: jdbc:sqlite:shiftgrab.db
+    driver-class-name: org.sqlite.JDBC
+  jpa:
+    database-platform: org.hibernate.community.dialect.SQLiteDialect
+    hibernate:
+      ddl-auto: none
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:db/01-schema.sql
+      data-locations: classpath:db/02-mock-data.sql
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
