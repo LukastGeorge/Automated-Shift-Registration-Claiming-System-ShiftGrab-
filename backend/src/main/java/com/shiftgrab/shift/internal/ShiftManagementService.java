@@ -2,6 +2,9 @@ package com.shiftgrab.shift.internal;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.util.EnumSet;
+import java.util.List;
+import java.util.Set;
 
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -12,9 +15,13 @@ import com.shiftgrab.identity.Role;
 import com.shiftgrab.identity.UserAccount;
 import com.shiftgrab.shared.error.BusinessException;
 import com.shiftgrab.shared.error.ErrorCode;
+import com.shiftgrab.shared.error.ValidationErrors;
+import com.shiftgrab.shared.web.PageResponse;
 import com.shiftgrab.shift.Shift;
 import com.shiftgrab.shift.ShiftCreated;
+import com.shiftgrab.shift.ShiftStatus;
 import com.shiftgrab.shift.internal.ShiftRepository.NewShift;
+import com.shiftgrab.shift.internal.ShiftRepository.ShiftQuery;
 
 /** Manager use cases on shifts (SG-20..SG-22) and visibility rules for reading them. */
 @Service
@@ -52,6 +59,34 @@ public class ShiftManagementService {
         }
         return shift;
     }
+
+    /**
+     * SG-24. Managers filter freely; for staff the filter is intersected with "OPEN or FULL and not started",
+     * so a staff request for CANCELLED shifts simply returns an empty page.
+     */
+    @Transactional(readOnly = true)
+    public PageResponse<Shift> search(Instant startsFrom, Instant startsBefore, Set<ShiftStatus> statuses, int page,
+            int size) {
+        new ValidationErrors()
+                .rejectIf(startsFrom != null && startsBefore != null && !startsBefore.isAfter(startsFrom), "to",
+                        "must be after from")
+                .throwIfAny();
+        Set<ShiftStatus> wanted = statuses == null || statuses.isEmpty() ? EnumSet.allOf(ShiftStatus.class)
+                : EnumSet.copyOf(statuses);
+        Instant from = startsFrom;
+        if (currentUser.currentRole() != Role.MANAGER) {
+            wanted.retainAll(STAFF_VISIBLE);
+            // "Not started" means start_at > now; the query bound is inclusive, hence the 1 ms shift.
+            Instant earliest = clock.instant().plusMillis(1);
+            from = from == null || from.isBefore(earliest) ? earliest : from;
+        }
+        if (wanted.isEmpty()) {
+            return PageResponse.of(List.of(), page, size, 0);
+        }
+        return shifts.search(new ShiftQuery(from, startsBefore, wanted), page, size);
+    }
+
+    private static final Set<ShiftStatus> STAFF_VISIBLE = EnumSet.of(ShiftStatus.OPEN, ShiftStatus.FULL);
 
     static BusinessException notFound(long id) {
         return new BusinessException(ErrorCode.SHIFT_NOT_FOUND, "Shift " + id + " does not exist.");
