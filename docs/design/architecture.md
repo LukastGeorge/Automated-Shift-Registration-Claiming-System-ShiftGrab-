@@ -215,6 +215,7 @@ erDiagram
 |---|---|---|---|
 | GET | `/api/v1/me` | any | SG-10 |
 | GET | `/api/v1/shifts?from&to&status&page` | any | SG-24 |
+| GET | `/api/v1/shifts/{id}` (returns `ETag`) | any | SG-20 |
 | POST | `/api/v1/shifts` | MANAGER | SG-20 |
 | PATCH | `/api/v1/shifts/{id}` | MANAGER | SG-21 |
 | POST | `/api/v1/shifts/{id}/cancel` | MANAGER | SG-22 |

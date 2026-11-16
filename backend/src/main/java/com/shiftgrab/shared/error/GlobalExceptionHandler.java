@@ -1,6 +1,5 @@
 package com.shiftgrab.shared.error;
 
-import java.util.Comparator;
 import java.util.List;
 
 import org.slf4j.Logger;
@@ -35,15 +34,6 @@ import jakarta.validation.ConstraintViolationException;
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
-
-    /** One entry of the {@code errors} member of a {@code VALIDATION_FAILED} problem. */
-    public record FieldViolation(String field, String message) {
-
-        public FieldViolation {
-            field = field == null || field.isBlank() ? "request" : field;
-            message = message == null ? "is invalid" : message;
-        }
-    }
 
     @ExceptionHandler(BusinessException.class)
     ProblemDetail handleBusiness(BusinessException ex, HttpServletRequest request) {
@@ -143,10 +133,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     private static ProblemDetail validationProblem(List<FieldViolation> violations, String path) {
-        ProblemDetail problem = Problems.of(ErrorCode.VALIDATION_FAILED, "One or more fields are invalid.", path);
-        problem.setProperty("errors", violations.stream()
-                .sorted(Comparator.comparing(FieldViolation::field).thenComparing(FieldViolation::message))
-                .toList());
+        BusinessException ex = ValidationErrors.exception(violations);
+        ProblemDetail problem = Problems.of(ex.code(), ex.getMessage(), path);
+        ex.properties().forEach(problem::setProperty);
         return problem;
     }
 

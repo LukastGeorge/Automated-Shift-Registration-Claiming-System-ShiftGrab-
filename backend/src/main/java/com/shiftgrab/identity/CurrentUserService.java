@@ -28,11 +28,16 @@ public class CurrentUserService {
         this.repository = repository;
     }
 
+    /**
+     * Role of the caller, read from the token only. Use this for read-only authorisation decisions: unlike
+     * {@link #currentUser()} it never writes, so it is safe inside read-only transactions.
+     */
+    public Role currentRole() {
+        return roleFrom(jwtAuthentication().getAuthorities());
+    }
+
     public UserAccount currentUser() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (!(authentication instanceof JwtAuthenticationToken token)) {
-            throw new AuthenticationCredentialsNotFoundException("No JWT authentication in security context");
-        }
+        JwtAuthenticationToken token = jwtAuthentication();
         Jwt jwt = token.getToken();
         Role role = roleFrom(token.getAuthorities());
         String fullName = firstNonBlank(jwt.getClaimAsString("name"), jwt.getClaimAsString("preferred_username"),
@@ -44,6 +49,14 @@ public class CurrentUserService {
                         && Objects.equals(existing.email(), email)
                         && existing.role() == role)
                 .orElseGet(() -> repository.upsertProfile(jwt.getSubject(), fullName, email, role));
+    }
+
+    private static JwtAuthenticationToken jwtAuthentication() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (!(authentication instanceof JwtAuthenticationToken token)) {
+            throw new AuthenticationCredentialsNotFoundException("No JWT authentication in security context");
+        }
+        return token;
     }
 
     /** MANAGER wins if a user somehow holds both roles; a token with neither role is rejected. */
