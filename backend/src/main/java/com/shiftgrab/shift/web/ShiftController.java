@@ -1,32 +1,39 @@
 package com.shiftgrab.shift.web;
 
 import java.net.URI;
+import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.Set;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.shiftgrab.shared.web.ETags;
 import com.shiftgrab.shared.web.PageResponse;
 import com.shiftgrab.shift.Shift;
 import com.shiftgrab.shift.ShiftStatus;
 import com.shiftgrab.shift.internal.ShiftManagementService;
+import com.shiftgrab.shift.internal.ShiftManagementService.ShiftChanges;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 @RestController
@@ -71,6 +78,34 @@ class ShiftController {
     ResponseEntity<ShiftResponse> get(@PathVariable long id) {
         Shift shift = service.get(id);
         return ResponseEntity.ok().eTag(Long.toString(shift.version())).body(ShiftResponse.from(shift));
+    }
+
+    @PatchMapping("/{id}")
+    @PreAuthorize("hasRole('MANAGER')")
+    @Operation(summary = "Edit a shift (SG-21)",
+            description = "Send only the fields to change, with the ETag from GET in If-Match. Start/end are frozen "
+                    + "once staff have registered (BR-09); maxSlots cannot go below booked slots (BR-08).")
+    ResponseEntity<ShiftResponse> update(@PathVariable long id,
+            @RequestHeader(value = HttpHeaders.IF_MATCH, required = false) String ifMatch,
+            @Valid @RequestBody UpdateShiftRequest request) {
+        long expectedVersion = ETags.requireVersion(ifMatch);
+        Shift shift = service.update(id, expectedVersion, new ShiftChanges(request.name(),
+                instant(request.startAt()), instant(request.endAt()), instant(request.registrationOpenAt()),
+                request.maxSlots()));
+        return ResponseEntity.ok().eTag(Long.toString(shift.version())).body(ShiftResponse.from(shift));
+    }
+
+    private static Instant instant(OffsetDateTime value) {
+        return value == null ? null : value.toInstant();
+    }
+
+    /** All fields optional; {@code name}, when present, must not be blank. */
+    record UpdateShiftRequest(
+            @Size(max = 100) @Pattern(regexp = ".*\\S.*", message = "must not be blank") String name,
+            OffsetDateTime startAt,
+            OffsetDateTime endAt,
+            OffsetDateTime registrationOpenAt,
+            @Min(1) @Max(500) Integer maxSlots) {
     }
 
     record CreateShiftRequest(

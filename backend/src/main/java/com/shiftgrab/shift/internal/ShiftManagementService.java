@@ -4,6 +4,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.springframework.context.ApplicationEventPublisher;
@@ -18,6 +19,7 @@ import com.shiftgrab.shared.error.ErrorCode;
 import com.shiftgrab.shared.error.ValidationErrors;
 import com.shiftgrab.shared.web.PageResponse;
 import com.shiftgrab.shift.Shift;
+import com.shiftgrab.shift.ShiftChanged;
 import com.shiftgrab.shift.ShiftCreated;
 import com.shiftgrab.shift.ShiftStatus;
 import com.shiftgrab.shift.internal.ShiftRepository.NewShift;
@@ -48,6 +50,68 @@ public class ShiftManagementService {
                 manager.id());
         events.publishEvent(new ShiftCreated(shift.id(), manager.id()));
         return shift;
+    }
+
+    /**
+     * SG-21. Fields left null are unchanged. Rules are checked against the loaded shift for precise error codes,
+     * then re-enforced atomically by {@link ShiftRepository#update}; losing a race there means someone else
+     * changed the shift in between, hence CONCURRENT_MODIFICATION.
+     */
+    @Transactional
+    public Shift update(long id, long expectedVersion, ShiftChanges changes) {
+        Shift current = shifts.findById(id).orElseThrow(() -> notFound(id));
+        Instant now = clock.instant();
+        if (current.status() == ShiftStatus.CANCELLED) {
+            throw new BusinessException(ErrorCode.SHIFT_CANCELLED, "A cancelled shift cannot be edited.");
+        }
+        if (current.hasStarted(now)) {
+            throw new BusinessException(ErrorCode.SHIFT_ALREADY_STARTED, "A shift that has started cannot be edited.");
+        }
+        if (current.version() != expectedVersion) {
+            throw concurrentModification();
+        }
+
+        Shift edited = changes.applyTo(current);
+        boolean timesChanged = !edited.startAt().equals(current.startAt()) || !edited.endAt().equals(current.endAt());
+        boolean openChanged = !edited.registrationOpenAt().equals(current.registrationOpenAt());
+        if (timesChanged || openChanged) {
+            ShiftRules.checkTimes(edited.startAt(), edited.endAt(), edited.registrationOpenAt(), now).throwIfAny();
+        }
+        if (timesChanged && current.bookedSlots() > 0) {
+            throw new BusinessException(ErrorCode.SHIFT_HAS_REGISTRATIONS,
+                    "Start and end cannot change once staff have registered; cancel and recreate the shift (BR-09).",
+                    Map.of("bookedSlots", current.bookedSlots()));
+        }
+        if (edited.maxSlots() < current.bookedSlots()) {
+            throw new BusinessException(ErrorCode.SHIFT_HAS_REGISTRATIONS,
+                    "maxSlots cannot be lower than the " + current.bookedSlots() + " confirmed registrations (BR-08).",
+                    Map.of("bookedSlots", current.bookedSlots()));
+        }
+        if (edited.equals(current)) {
+            return current; // nothing to change: no new version, no event
+        }
+
+        Shift updated = shifts.update(edited, expectedVersion, timesChanged).orElseThrow(this::concurrentModification);
+        events.publishEvent(new ShiftChanged(id, currentUser.currentUser().id(), timesChanged));
+        return updated;
+    }
+
+    /** Partial update of a shift; {@code null} means "keep the current value". */
+    public record ShiftChanges(String name, Instant startAt, Instant endAt, Instant registrationOpenAt,
+            Integer maxSlots) {
+
+        Shift applyTo(Shift s) {
+            return new Shift(s.id(), name == null ? s.name() : name.strip(), startAt == null ? s.startAt() : startAt,
+                    endAt == null ? s.endAt() : endAt,
+                    registrationOpenAt == null ? s.registrationOpenAt() : registrationOpenAt,
+                    maxSlots == null ? s.maxSlots() : maxSlots, s.bookedSlots(), s.status(), s.templateId(),
+                    s.version());
+        }
+    }
+
+    private BusinessException concurrentModification() {
+        return new BusinessException(ErrorCode.CONCURRENT_MODIFICATION,
+                "The shift was changed by someone else. Reload and try again.");
     }
 
     /** Managers see every shift; staff get 404 for shifts they cannot act on, so they cannot probe ids. */
