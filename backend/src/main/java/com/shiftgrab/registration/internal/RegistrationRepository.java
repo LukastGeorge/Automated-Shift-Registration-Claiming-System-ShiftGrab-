@@ -52,6 +52,26 @@ class RegistrationRepository {
                 .optional();
     }
 
+    /**
+     * Cancels the owner's confirmed registration. The status condition makes it atomic: of two concurrent
+     * cancellations only one gets the row back, so the slot is released exactly once.
+     */
+    Optional<Registration> cancel(long id, long userId, Instant now) {
+        return jdbc.sql("""
+                WITH cancelled AS (
+                  UPDATE shift_registrations SET status = 'CANCELLED', cancelled_at = :now
+                   WHERE id = :id AND user_id = :userId AND status = 'CONFIRMED'
+                  RETURNING *
+                )
+                SELECT %s FROM cancelled r
+                """.formatted(COLUMNS))
+                .param("id", id)
+                .param("userId", userId)
+                .param("now", utc(now))
+                .query(RegistrationRepository::map)
+                .optional();
+    }
+
     boolean holdsShift(long userId, long shiftId) {
         return jdbc.sql("""
                 SELECT EXISTS (SELECT 1 FROM shift_registrations

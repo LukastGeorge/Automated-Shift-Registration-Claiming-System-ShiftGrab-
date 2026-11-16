@@ -9,10 +9,12 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.shiftgrab.registration.internal.CancellationService;
 import com.shiftgrab.registration.internal.ClaimService;
 import com.shiftgrab.registration.internal.Registration;
 import com.shiftgrab.registration.internal.RegistrationStatus;
@@ -22,9 +24,11 @@ import com.shiftgrab.registration.internal.RegistrationStatus;
 class RegistrationController {
 
     private final ClaimService claims;
+    private final CancellationService cancellations;
 
-    RegistrationController(ClaimService claims) {
+    RegistrationController(ClaimService claims, CancellationService cancellations) {
         this.claims = claims;
+        this.cancellations = cancellations;
     }
 
     @PostMapping("/api/v1/shifts/{shiftId}/registrations")
@@ -37,6 +41,16 @@ class RegistrationController {
         Registration registration = claims.claim(shiftId);
         return ResponseEntity.created(URI.create("/api/v1/registrations/" + registration.id()))
                 .body(RegistrationResponse.from(registration));
+    }
+
+    @DeleteMapping("/api/v1/registrations/{id}")
+    @PreAuthorize("hasRole('STAFF')")
+    @Operation(summary = "Cancel my registration (SG-31)",
+            description = "Allowed until 24 h before the shift starts (BR-06); the slot is released immediately. "
+                    + "Repeating the call is harmless. 409 CANCEL_DEADLINE_PASSED.")
+    ResponseEntity<Void> cancel(@PathVariable long id) {
+        cancellations.cancel(id);
+        return ResponseEntity.noContent().build();
     }
 
     record RegistrationResponse(long id, long shiftId, RegistrationStatus status, Instant startAt, Instant endAt,
