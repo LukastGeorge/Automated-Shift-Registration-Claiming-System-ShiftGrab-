@@ -95,6 +95,20 @@ class ShiftController {
         return ResponseEntity.ok().eTag(Long.toString(shift.version())).body(ShiftResponse.from(shift));
     }
 
+    @PostMapping("/{id}/cancel")
+    @PreAuthorize("hasRole('MANAGER')")
+    @Operation(summary = "Cancel a shift (SG-22)",
+            description = "Cancels the shift and all its registrations in one transaction (BR-07); affected staff are "
+                    + "notified with the optional reason. Repeating the call is harmless.")
+    ResponseEntity<ShiftResponse> cancel(@PathVariable long id,
+            @Valid @RequestBody(required = false) CancelShiftRequest request) {
+        Shift shift = service.cancel(id, request == null ? null : request.reason());
+        return ResponseEntity.ok().eTag(Long.toString(shift.version())).body(ShiftResponse.from(shift));
+    }
+
+    record CancelShiftRequest(@Size(max = 500) String reason) {
+    }
+
     private static Instant instant(OffsetDateTime value) {
         return value == null ? null : value.toInstant();
     }

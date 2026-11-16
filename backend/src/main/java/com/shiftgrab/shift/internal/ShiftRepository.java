@@ -86,6 +86,22 @@ public class ShiftRepository {
     }
 
     /**
+     * Marks the shift cancelled and frees its slots (SG-22). Registrations are cancelled by the registration
+     * module in the same transaction, which keeps {@code booked_slots} equal to the confirmed count.
+     * Empty result = already cancelled by a concurrent request.
+     */
+    public Optional<Shift> cancel(long id) {
+        return jdbc.sql("""
+                UPDATE shifts SET status = 'CANCELLED', booked_slots = 0, version = version + 1
+                 WHERE id = :id AND status <> 'CANCELLED'
+                RETURNING %s
+                """.formatted(COLUMNS))
+                .param("id", id)
+                .query(ShiftRepository::map)
+                .optional();
+    }
+
+    /**
      * Filtered page sorted by start time (SG-24). Uses {@code idx_shifts_start_status}; {@code id} breaks ties so
      * pages are stable when several shifts start at the same instant.
      */
