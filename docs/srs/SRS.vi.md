@@ -151,3 +151,10 @@ Mỗi story có tiêu chí nghiệm thu (AC) dạng Given/When/Then. Mã `SG-xx`
 
 Mọi lỗi API theo RFC 7807 `application/problem+json`, kèm trường `code`:
 `VALIDATION_FAILED`, `SHIFT_NOT_FOUND`, `SHIFT_FULL`, `REGISTRATION_NOT_OPEN`, `SHIFT_OVERLAP`, `WEEKLY_LIMIT_EXCEEDED`, `ALREADY_REGISTERED`, `CANCEL_DEADLINE_PASSED`, `CONCURRENT_MODIFICATION`, `SHIFT_HAS_REGISTRATIONS`.
+
+Các mã chung cho mọi lỗi còn lại, để client luôn rẽ nhánh theo `code`: `MALFORMED_REQUEST` (400), `UNAUTHORIZED` (401), `FORBIDDEN` (403), `NOT_FOUND` (404), `METHOD_NOT_ALLOWED` (405), `DATA_CONFLICT` (409, ràng buộc CSDL chưa được ánh xạ), `INTERNAL_ERROR` (500, không lộ chi tiết nội bộ). `VALIDATION_FAILED` có thêm `errors: [{field, message}]`.
+
+```json
+{ "type": "about:blank", "title": "Shift is full", "status": 409, "detail": "…",
+  "instance": "/api/v1/shifts/42/registrations", "code": "SHIFT_FULL" }
+```

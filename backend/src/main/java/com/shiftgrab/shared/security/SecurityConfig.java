@@ -15,6 +15,8 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import tools.jackson.databind.json.JsonMapper;
+
 /**
  * Stateless resource server (ADR-0003). Every API call carries a Keycloak-issued JWT whose signature,
  * issuer and audience ({@code shiftgrab-api}) are validated; no server-side session exists.
@@ -24,8 +26,9 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 public class SecurityConfig {
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationConverter jwtAuthenticationConverter)
-            throws Exception {
+    SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationConverter jwtAuthenticationConverter,
+            JsonMapper jsonMapper) throws Exception {
+        var problemHandler = new ProblemDetailsSecurityHandler(jsonMapper);
         return http
                 // Bearer tokens are not sent automatically by browsers, so CSRF does not apply.
                 .csrf(csrf -> csrf.disable())
@@ -38,7 +41,12 @@ public class SecurityConfig {
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().denyAll())
                 .oauth2ResourceServer(oauth2 -> oauth2
-                        .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter)))
+                        .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter))
+                        .authenticationEntryPoint(problemHandler)
+                        .accessDeniedHandler(problemHandler))
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint(problemHandler)
+                        .accessDeniedHandler(problemHandler))
                 .build();
     }
 

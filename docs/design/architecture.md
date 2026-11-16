@@ -199,7 +199,7 @@ erDiagram
 | Object | Definition | Requirement |
 |---|---|---|
 | `uq_active_registration` | `UNIQUE (shift_id, user_id) WHERE status = 'CONFIRMED'` (partial index) | BR-02 — allows re-claiming after cancel, fixing the old full-table `UNIQUE` |
-| `ex_no_overlap` | `EXCLUDE USING gist (user_id WITH =, time_range WITH &&) WHERE (status = 'CONFIRMED')` (needs `btree_gist`) | BR-03 enforced by the database, even under concurrency |
+| `ex_no_overlap` | `EXCLUDE USING gist (user_id WITH =, shift_id WITH <>, time_range WITH &&) WHERE (status = 'CONFIRMED')` (needs `btree_gist`) | BR-03 enforced by the database, even under concurrency. `shift_id WITH <>` (migration V2) leaves same-shift duplicates to `uq_active_registration`, so each rule maps to exactly one error code |
 | `ck_slots` | `CHECK (booked_slots BETWEEN 0 AND max_slots)` | BR-01 last line of defence |
 | `idx_shifts_start_status` | `(start_at, status)` | SG-24 listing |
 | `idx_reg_user_range` | `(user_id) WHERE status='CONFIRMED'` + gist on `time_range` | BR-04 weekly sum, SG-32 |
