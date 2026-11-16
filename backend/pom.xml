@@ -21,6 +21,7 @@
         <java.version>21</java.version>
         <spring-modulith.version>2.1.2</spring-modulith.version>
         <springdoc.version>3.2.0</springdoc.version>
+        <testcontainers-keycloak.version>4.4.0</testcontainers-keycloak.version>
     </properties>
 
     <dependencyManagement>
@@ -49,6 +50,12 @@
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
             <version>${springdoc.version}</version>
+        </dependency>
+
+        <!-- Security (ADR-0003: Keycloak issues JWTs, backend is a resource server) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security-oauth2-resource-server</artifactId>
         </dependency>
 
         <!-- Persistence -->
@@ -113,9 +120,32 @@
             <artifactId>spring-modulith-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.github.dasniko</groupId>
+            <artifactId>testcontainers-keycloak</artifactId>
+            <version>${testcontainers-keycloak.version}</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
+        <testResources>
+            <testResource>
+                <directory>src/test/resources</directory>
+            </testResource>
+            <!-- Integration tests import the same realm file that docker-compose uses -->
+            <testResource>
+                <directory>../infra/keycloak</directory>
+                <includes>
+                    <include>realm-shiftgrab.json</include>
+                </includes>
+            </testResource>
+        </testResources>
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
