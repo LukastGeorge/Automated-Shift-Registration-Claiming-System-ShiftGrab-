@@ -27,3 +27,8 @@ updates:
       interval: weekly
     commit-message:
       prefix: "chore(deps)"
+    ignore:
+      # Major PostgreSQL upgrades need pg_upgrade or dump/restore and must move together with
+      # Testcontainers and production (ADR-0002), so they are planned by hand, not by a bot PR.
+      - dependency-name: "postgres"
+        update-types: ["version-update:semver-major"]
