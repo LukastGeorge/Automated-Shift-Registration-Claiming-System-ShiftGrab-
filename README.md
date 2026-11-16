@@ -1,17 +1,53 @@
-# ShiftGrab - Hệ thống Đăng ký & Giành ca làm việc tự động
+# ShiftGrab — Automated Shift Registration & Claiming System
 
-## Kiến trúc & Các quyết định kỹ thuật (Trả lời câu hỏi "TẠI SAO?")
+> 🇻🇳 [Đọc bản tiếng Việt](README.vi.md)
 
-| Quyết định kỹ thuật | Vấn đề giải quyết | Tại sao chọn giải pháp này? |
-| :--- | :--- | :--- |
-| **Strategy Pattern cho Lock (`ShiftLockProvider`)** | Tách biệt cơ chế khóa đồng thời khỏi nghiệp vụ. | Giai đoạn MVP dùng `ReentrantLock` theo từng `shiftId` để chạy gọn nhẹ. Khi scale nhiều instance server chỉ cần viết thêm `RedisLockProvider` mà không sửa code nghiệp vụ. |
-| **Database Optimistic Locking (`@Version`)** | Phòng thủ lớp thứ 2 chống ghi đè dữ liệu khi nhiều thread cập nhật cùng lúc. | Đảm bảo toàn vẹn dữ liệu ở tầng Database mà không giữ kết nối lâu như `SELECT FOR UPDATE`. |
-| **Unique Constraint `(shift_id, user_id)`** | Nhân viên bấm đúp nút đăng ký 2 lần liên tiếp. | Đảm bảo tính **Idempotency** ở cấp Database, chặn đứng việc 1 người chiếm 2 suất của cùng 1 ca. |
-| **Composite Index `(shift_date, status)`** | Lọc nhanh danh sách ca còn trống theo ngày. | Đưa độ phức tạp truy vấn từ $O(N)$ (quét toàn bảng) về $O(\log N)$ trên cây B-Tree. |
+[![CI - Backend](https://github.com/LukastGeorge/Automated-Shift-Registration-Claiming-System-ShiftGrab-/actions/workflows/ci-backend.yml/badge.svg?branch=develop)](https://github.com/LukastGeorge/Automated-Shift-Registration-Claiming-System-ShiftGrab-/actions/workflows/ci-backend.yml)
 
-## Cách chạy trên VS Code
+ShiftGrab lets managers publish work shifts with a limited number of slots and lets staff **claim them at a fixed opening time** — a "flash sale" for shifts. The core engineering problem is **correctness under contention**: when hundreds of people click *Claim* at the same second, no shift may ever be overbooked, no one may hold two overlapping shifts, and weekly hour limits must hold.
 
-1. Mở thư mục `backend` và chạy `ShiftGrabApplication.java`.
-2. Hệ thống tự động tạo file `shiftgrab.db` và nạp sẵn dữ liệu mẫu (5 nhân viên, 5 ca làm việc).
-3. Click trực tiếp vào file `shiftgrab.db` trong VS Code (dùng extension SQLite Viewer / Database Client) để xem bảng dữ liệu.
-4. Truy cập Swagger UI để test API: `http://localhost:8080/swagger-ui.html`
+> **Status:** 🚧 Sprint 0 — inception. Requirements, architecture and decisions are being documented; feature code starts in Sprint 1. See the [roadmap](#roadmap).
+
+## Planned architecture
+
+| Layer | Technology |
+|---|---|
+| Frontend | Angular (TypeScript, Angular Material), OIDC login, live updates over WebSocket |
+| Backend | Java 21, Spring Boot 3, modular monolith (Spring Modulith) |
+| Identity | Keycloak (OAuth2 / OpenID Connect), roles `MANAGER` / `STAFF` |
+| Data | PostgreSQL 16 + Flyway migrations |
+| Concurrency | Redis distributed lock (Redisson) + atomic SQL update + database constraints |
+| Observability | Spring Actuator, Micrometer, Prometheus, Grafana |
+| Delivery | Docker, Docker Compose, Nginx (TLS), GitHub Actions CI/CD → GHCR → VPS |
+| Quality | JUnit 5, Testcontainers, concurrency tests, JaCoCo, k6 load tests |
+
+Detailed design: [`docs/design`](docs/design) · Decisions: [`docs/adr`](docs/adr) · Requirements: [`docs/srs`](docs/srs)
+
+## Repository layout
+
+```
+backend/      Spring Boot application
+frontend/     Angular application
+infra/        Docker Compose, Keycloak realm, Nginx, Prometheus, Grafana, scripts
+load-tests/   k6 scenarios and results
+docs/         SRS, design (C4, ERD, sequences), ADRs, runbook
+```
+
+## Roadmap
+
+| Sprint | Goal |
+|---|---|
+| 0 | Inception: repo structure, SRS, design, ADRs, backlog |
+| 1 | Backend foundation: PostgreSQL, Flyway, Keycloak, CI with Testcontainers |
+| 2 | Shift management (CRUD, recurring shifts) |
+| 3 | Claim / cancel with distributed locking and business rules |
+| 4 | Angular foundation |
+| 5 | Real-time updates, e-mail notifications, audit log |
+| 6 | Reports (hours & pay, CSV/Excel) |
+| 7 | Docker production stack, monitoring, CD to VPS with HTTPS |
+| 8 | Load testing (k6) and tuning |
+| 9 | Hardening, documentation, release v1.0.0 |
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the branching model, commit conventions and Definition of Done.

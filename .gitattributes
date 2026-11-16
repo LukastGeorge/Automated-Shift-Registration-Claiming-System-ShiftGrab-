@@ -1,0 +1,8 @@
+# Normalise line endings: the app runs in Linux containers even when developed on Windows
+* text=auto eol=lf
+*.cmd text eol=crlf
+*.bat text eol=crlf
+*.jar binary
+*.png binary
+*.jpg binary
+*.gif binary

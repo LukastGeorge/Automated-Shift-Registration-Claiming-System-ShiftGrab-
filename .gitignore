@@ -1,8 +1,30 @@
+# Build output
 target/
+build/
+dist/
+out/
 *.jar
+!**/.mvn/wrapper/maven-wrapper.jar
+
+# Logs & local databases
 *.log
 *.db
 *.db-shm
 *.db-wal
+
+# Node / Angular
+node_modules/
+.angular/
+coverage/
+
+# Secrets — never commit real environment files
+.env
+.env.*
+!.env.example
+
+# IDE / OS
 .idea/
 .vscode/
+*.iml
+.DS_Store
+Thumbs.db
