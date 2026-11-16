@@ -3,6 +3,7 @@ package com.shiftgrab.identity;
 import java.util.Collection;
 import java.util.Objects;
 
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.core.Authentication;
@@ -48,7 +49,21 @@ public class CurrentUserService {
                 .filter(existing -> Objects.equals(existing.fullName(), fullName)
                         && Objects.equals(existing.email(), email)
                         && existing.role() == role)
-                .orElseGet(() -> repository.upsertProfile(jwt.getSubject(), fullName, email, role));
+                .orElseGet(() -> upsert(jwt.getSubject(), fullName, email, role));
+    }
+
+    /**
+     * A user's first requests often arrive in parallel (a SPA loading several resources after login). The upsert
+     * arbitrates on {@code keycloak_sub} only, so a racing insert can be rejected by the other unique index
+     * ({@code uq_users_email}) instead. One retry resolves it: the row now exists and the upsert updates it.
+     * A genuine clash (the e-mail belongs to another account) fails again and surfaces as DATA_CONFLICT.
+     */
+    private UserAccount upsert(String sub, String fullName, String email, Role role) {
+        try {
+            return repository.upsertProfile(sub, fullName, email, role);
+        } catch (DuplicateKeyException firstAttempt) {
+            return repository.upsertProfile(sub, fullName, email, role);
+        }
     }
 
     private static JwtAuthenticationToken jwtAuthentication() {

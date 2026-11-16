@@ -61,8 +61,24 @@ public class ClaimService {
 
     public Registration claim(long shiftId) {
         UserAccount staff = currentUser.currentUser();
+        rejectFullShiftWithoutLocking(staff.id(), shiftId);
         return locks.executeWithLocks(ShiftLockProvider.claimKeys(staff.id(), shiftId),
                 () -> transaction.execute(tx -> claimLocked(staff, shiftId)));
+    }
+
+    /**
+     * Flash-sale fast path: once a shift is FULL, the hundreds of late requests are answered without queueing on
+     * the shift lock. Safe because it can only reject: a stale read at worst refuses a slot freed a moment ago,
+     * never grants one. A double-click by the holder of the last slot still gets ALREADY_REGISTERED (AC6).
+     */
+    private void rejectFullShiftWithoutLocking(long userId, long shiftId) {
+        boolean full = shifts.findById(shiftId).map(s -> s.status() == ShiftStatus.FULL).orElse(false);
+        if (full) {
+            if (registrations.holdsShift(userId, shiftId)) {
+                throw new BusinessException(ErrorCode.ALREADY_REGISTERED, "You already hold this shift.");
+            }
+            throw shiftFull();
+        }
     }
 
     private Registration claimLocked(UserAccount staff, long shiftId) {
