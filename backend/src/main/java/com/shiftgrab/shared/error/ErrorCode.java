@@ -27,6 +27,8 @@ public enum ErrorCode {
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "User not found"),
     PRECONDITION_REQUIRED(HttpStatus.PRECONDITION_REQUIRED, "If-Match header required"),
 
+    REGISTRATION_NOT_FOUND(HttpStatus.NOT_FOUND, "Registration not found"),
+
     // Claiming under load (Sprint 3, ADR-0004): both are temporary, so they carry Retry-After
     CLAIM_BUSY(HttpStatus.SERVICE_UNAVAILABLE, "Too many concurrent requests", 1),
     LOCK_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "Claiming is temporarily unavailable", 5),
