@@ -20,6 +20,13 @@ public enum ErrorCode {
     CONCURRENT_MODIFICATION(HttpStatus.CONFLICT, "Resource was modified concurrently"),
     SHIFT_HAS_REGISTRATIONS(HttpStatus.CONFLICT, "Shift already has registrations"),
 
+    // Shift management codes added in Sprint 2 (SRS §6)
+    SHIFT_CANCELLED(HttpStatus.CONFLICT, "Shift is cancelled"),
+    SHIFT_ALREADY_STARTED(HttpStatus.CONFLICT, "Shift has already started"),
+    TEMPLATE_NOT_FOUND(HttpStatus.NOT_FOUND, "Shift template not found"),
+    USER_NOT_FOUND(HttpStatus.NOT_FOUND, "User not found"),
+    PRECONDITION_REQUIRED(HttpStatus.PRECONDITION_REQUIRED, "If-Match header required"),
+
     // Generic codes so that every error, including framework ones, carries a code
     MALFORMED_REQUEST(HttpStatus.BAD_REQUEST, "Malformed request"),
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "Authentication required"),
