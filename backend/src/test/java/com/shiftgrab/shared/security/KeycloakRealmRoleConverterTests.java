@@ -36,6 +36,13 @@ class KeycloakRealmRoleConverterTests {
         assertThat(converter.convert(jwt)).isEmpty();
     }
 
+    @Test
+    void returnsNoAuthoritiesWhenRolesAreMalformed() {
+        Jwt jwt = jwtWithClaim("realm_access", Map.of("roles", "STAFF"));
+
+        assertThat(converter.convert(jwt)).isEmpty();
+    }
+
     private static Jwt jwtWithClaim(String name, Object value) {
         return Jwt.withTokenValue("token").header("alg", "none").subject("user-1").claim(name, value).build();
     }
