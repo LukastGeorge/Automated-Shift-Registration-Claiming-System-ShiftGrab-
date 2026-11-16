@@ -13,7 +13,7 @@
 
     <groupId>com.shiftgrab</groupId>
     <artifactId>shiftgrab-backend</artifactId>
-    <version>0.2.0</version>
+    <version>0.3.0-SNAPSHOT</version>
     <name>ShiftGrab Backend</name>
     <description>Shift registration and claiming system — modular monolith</description>
 
