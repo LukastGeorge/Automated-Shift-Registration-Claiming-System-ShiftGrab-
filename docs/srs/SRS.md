@@ -151,3 +151,10 @@ Each story has acceptance criteria (AC) in Given/When/Then form. IDs `SG-xx` mat
 
 All API errors use RFC 7807 `application/problem+json` with an extra `code` field:
 `VALIDATION_FAILED`, `SHIFT_NOT_FOUND`, `SHIFT_FULL`, `REGISTRATION_NOT_OPEN`, `SHIFT_OVERLAP`, `WEEKLY_LIMIT_EXCEEDED`, `ALREADY_REGISTERED`, `CANCEL_DEADLINE_PASSED`, `CONCURRENT_MODIFICATION`, `SHIFT_HAS_REGISTRATIONS`.
+
+Generic codes cover every other error so that clients can always branch on `code`: `MALFORMED_REQUEST` (400), `UNAUTHORIZED` (401), `FORBIDDEN` (403), `NOT_FOUND` (404), `METHOD_NOT_ALLOWED` (405), `DATA_CONFLICT` (409, unmapped database constraint), `INTERNAL_ERROR` (500, no internal details exposed). `VALIDATION_FAILED` adds `errors: [{field, message}]`.
+
+```json
+{ "type": "about:blank", "title": "Shift is full", "status": 409, "detail": "…",
+  "instance": "/api/v1/shifts/42/registrations", "code": "SHIFT_FULL" }
+```

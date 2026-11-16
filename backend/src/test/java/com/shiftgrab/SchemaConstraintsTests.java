@@ -50,8 +50,10 @@ class SchemaConstraintsTests {
         long shiftId = insertShift("2030-01-06 08:00+07", "2030-01-06 12:00+07", 3);
         register(shiftId, staffId, "[2030-01-06 08:00+07, 2030-01-06 12:00+07)");
 
+        // Must be the unique index, not the overlap exclusion, so the API can answer ALREADY_REGISTERED (V2).
         assertThatThrownBy(() -> register(shiftId, staffId, "[2030-01-06 08:00+07, 2030-01-06 12:00+07)"))
-                .isInstanceOf(DataIntegrityViolationException.class);
+                .isInstanceOf(DataIntegrityViolationException.class)
+                .hasMessageContaining("uq_registrations_active");
     }
 
     @Test
