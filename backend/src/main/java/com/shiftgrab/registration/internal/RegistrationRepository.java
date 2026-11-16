@@ -7,10 +7,15 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
+
+import com.shiftgrab.shared.web.PageResponse;
 
 @Repository
 class RegistrationRepository {
@@ -111,6 +116,33 @@ class RegistrationRepository {
                 .query(Long.class)
                 .single();
         return Duration.ofSeconds(seconds);
+    }
+
+    /**
+     * SG-32. Upcoming = not yet ended (includes a shift in progress), soonest first; past = ended, latest first.
+     * {@code status} null means all statuses.
+     */
+    PageResponse<Registration> findForUser(long userId, boolean upcoming, RegistrationStatus status, Instant now,
+            int page, int size) {
+        String where = " WHERE r.user_id = :userId AND upper(r.time_range) " + (upcoming ? ">" : "<=") + " :now"
+                + (status == null ? "" : " AND r.status = :status");
+        Map<String, Object> params = new HashMap<>();
+        params.put("userId", userId);
+        params.put("now", utc(now));
+        if (status != null) {
+            params.put("status", status.name());
+        }
+        long total = jdbc.sql("SELECT count(*) FROM shift_registrations r" + where).params(params)
+                .query(Long.class).single();
+        params.put("limit", size);
+        params.put("offset", (long) page * size);
+        String order = upcoming ? "lower(r.time_range), r.id" : "lower(r.time_range) DESC, r.id DESC";
+        List<Registration> content = jdbc.sql("SELECT " + COLUMNS + " FROM shift_registrations r" + where
+                        + " ORDER BY " + order + " LIMIT :limit OFFSET :offset")
+                .params(params)
+                .query(RegistrationRepository::map)
+                .list();
+        return PageResponse.of(content, page, size, total);
     }
 
     static OffsetDateTime utc(Instant instant) {
