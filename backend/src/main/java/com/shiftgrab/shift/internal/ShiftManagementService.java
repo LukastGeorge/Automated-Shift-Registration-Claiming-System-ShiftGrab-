@@ -19,6 +19,7 @@ import com.shiftgrab.shared.error.ErrorCode;
 import com.shiftgrab.shared.error.ValidationErrors;
 import com.shiftgrab.shared.web.PageResponse;
 import com.shiftgrab.shift.Shift;
+import com.shiftgrab.shift.ShiftCancelled;
 import com.shiftgrab.shift.ShiftChanged;
 import com.shiftgrab.shift.ShiftCreated;
 import com.shiftgrab.shift.ShiftStatus;
@@ -94,6 +95,30 @@ public class ShiftManagementService {
         Shift updated = shifts.update(edited, expectedVersion, timesChanged).orElseThrow(this::concurrentModification);
         events.publishEvent(new ShiftChanged(id, currentUser.currentUser().id(), timesChanged));
         return updated;
+    }
+
+    /**
+     * SG-22 / BR-07. Idempotent: cancelling a cancelled shift returns it unchanged without new events. A shift
+     * that has started is part of the record (hours, pay) and cannot be cancelled.
+     */
+    @Transactional
+    public Shift cancel(long id, String reason) {
+        Shift current = shifts.findById(id).orElseThrow(() -> notFound(id));
+        if (current.status() == ShiftStatus.CANCELLED) {
+            return current;
+        }
+        if (current.hasStarted(clock.instant())) {
+            throw new BusinessException(ErrorCode.SHIFT_ALREADY_STARTED,
+                    "A shift that has started cannot be cancelled.");
+        }
+        return shifts.cancel(id)
+                .map(cancelled -> {
+                    String why = reason == null || reason.isBlank() ? null : reason.strip();
+                    events.publishEvent(new ShiftCancelled(id, currentUser.currentUser().id(), why));
+                    return cancelled;
+                })
+                // A concurrent request cancelled it first: same outcome for the caller.
+                .orElseGet(() -> shifts.findById(id).orElseThrow(() -> notFound(id)));
     }
 
     /** Partial update of a shift; {@code null} means "keep the current value". */

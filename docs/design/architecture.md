@@ -71,9 +71,14 @@ flowchart LR
   registration -->|API call| shift
   registration -->|API call| identity
   reporting -->|API call| identity
-  registration -. ShiftClaimed / RegistrationCancelled .-> notification & realtime & audit
-  shift -. ShiftCancelled / ShiftChanged .-> notification & realtime & audit
+  registration -. ShiftClaimed / RegistrationCancelled / ShiftRegistrationsCancelled .-> notification & realtime & audit
+  shift -. ShiftCreated / ShiftChanged / ShiftCancelled .-> realtime & audit
+  shift == "ShiftCancelled (same transaction, BR-07)" ==> registration
 ```
+
+`ShiftCancelled` is the one event handled **synchronously inside the publishing transaction**: the registration module cancels the shift's registrations there, so BR-07 is all-or-nothing without `shift` depending on `registration` (which would create a cycle). It then publishes `ShiftRegistrationsCancelled` with the affected staff for the after-commit notification (SG-22, SG-41).
+
+🇻🇳 `ShiftCancelled` là event duy nhất được xử lý **đồng bộ trong cùng transaction**: module registration hủy các đăng ký của ca ngay trong đó, nên BR-07 là tất cả hoặc không mà `shift` không phải phụ thuộc `registration` (tránh phụ thuộc vòng). Sau đó nó phát `ShiftRegistrationsCancelled` kèm danh sách nhân viên bị ảnh hưởng để gửi thông báo sau commit (SG-22, SG-41).
 
 Rules (verified by `ApplicationModules.verify()` in a test):
 - A module exposes only its root package (public API). Internal packages (`*.internal`) are not accessible from other modules.
