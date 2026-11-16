@@ -1,28 +1,45 @@
 server:
-  port: 8080
+  port: ${SERVER_PORT:8080}
+  shutdown: graceful
 
 spring:
   application:
     name: shiftgrab-backend
   datasource:
-    url: jdbc:sqlite:shiftgrab.db
-    driver-class-name: org.sqlite.JDBC
+    # Default port matches infra/docker (5433); production sets DB_HOST/DB_PORT explicitly.
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5433}/${DB_NAME:shiftgrab}
+    username: ${DB_USER:shiftgrab}
+    password: ${DB_PASSWORD:shiftgrab}
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:10}
   jpa:
-    database-platform: org.hibernate.community.dialect.SQLiteDialect
+    open-in-view: false
     hibernate:
-      ddl-auto: none
-    show-sql: true
+      ddl-auto: validate
     properties:
       hibernate:
-        format_sql: true
-  sql:
-    init:
-      mode: always
-      schema-locations: classpath:db/01-schema.sql
-      data-locations: classpath:db/02-mock-data.sql
+        jdbc:
+          time_zone: UTC
+  flyway:
+    locations: classpath:db/migration
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8180/realms/shiftgrab}
+          audiences: shiftgrab-api
 
 management:
   endpoints:
     web:
       exposure:
         include: health,info,metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+shiftgrab:
+  time-zone: Asia/Ho_Chi_Minh
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200}
