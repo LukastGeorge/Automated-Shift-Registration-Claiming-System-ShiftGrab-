@@ -6,7 +6,8 @@ spring:
   application:
     name: shiftgrab-backend
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:shiftgrab}
+    # Default port matches infra/docker (5433); production sets DB_HOST/DB_PORT explicitly.
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5433}/${DB_NAME:shiftgrab}
     username: ${DB_USER:shiftgrab}
     password: ${DB_PASSWORD:shiftgrab}
     hikari:
