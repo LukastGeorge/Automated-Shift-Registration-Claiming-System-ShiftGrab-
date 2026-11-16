@@ -207,6 +207,7 @@ erDiagram
 | `ex_no_overlap` | `EXCLUDE USING gist (user_id WITH =, shift_id WITH <>, time_range WITH &&) WHERE (status = 'CONFIRMED')` (needs `btree_gist`) | BR-03 enforced by the database, even under concurrency. `shift_id WITH <>` (migration V2) leaves same-shift duplicates to `uq_active_registration`, so each rule maps to exactly one error code |
 | `ck_slots` | `CHECK (booked_slots BETWEEN 0 AND max_slots)` | BR-01 last line of defence |
 | `idx_shifts_start_status` | `(start_at, status)` | SG-24 listing |
+| `uq_shifts_template_start` | `UNIQUE (template_id, start_at) WHERE template_id IS NOT NULL` (migration V3) | SG-23 idempotent generation via `ON CONFLICT DO NOTHING`, safe under concurrent generation |
 | `idx_reg_user_range` | `(user_id) WHERE status='CONFIRMED'` + gist on `time_range` | BR-04 weekly sum, SG-32 |
 | `audit_log` | no `UPDATE`/`DELETE` granted to the application role | NFR-10 append-only |
 
@@ -224,7 +225,8 @@ erDiagram
 | POST | `/api/v1/shifts` | MANAGER | SG-20 |
 | PATCH | `/api/v1/shifts/{id}` (`If-Match` required) | MANAGER | SG-21 |
 | POST | `/api/v1/shifts/{id}/cancel` | MANAGER | SG-22 |
-| POST | `/api/v1/shift-templates/{id}/generate` | MANAGER | SG-23 |
+| POST, GET | `/api/v1/shift-templates`, `/api/v1/shift-templates/{id}` | MANAGER | SG-23 |
+| POST | `/api/v1/shift-templates/{id}/generate` (idempotent) | MANAGER | SG-23 |
 | PUT | `/api/v1/users/{id}/hourly-rate` | MANAGER | SG-25 |
 | POST | `/api/v1/shifts/{id}/registrations` | STAFF | SG-30 |
 | DELETE | `/api/v1/registrations/{id}` | STAFF (owner) | SG-31 |
