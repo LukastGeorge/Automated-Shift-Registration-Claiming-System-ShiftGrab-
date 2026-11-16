@@ -10,12 +10,20 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.shiftgrab.registration.internal.CancellationService;
 import com.shiftgrab.registration.internal.ClaimService;
+import com.shiftgrab.registration.internal.MyShiftsService;
+import com.shiftgrab.registration.internal.MyShiftsService.MyShifts;
+
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Pattern;
 import com.shiftgrab.registration.internal.Registration;
 import com.shiftgrab.registration.internal.RegistrationStatus;
 
@@ -25,10 +33,12 @@ class RegistrationController {
 
     private final ClaimService claims;
     private final CancellationService cancellations;
+    private final MyShiftsService myShifts;
 
-    RegistrationController(ClaimService claims, CancellationService cancellations) {
+    RegistrationController(ClaimService claims, CancellationService cancellations, MyShiftsService myShifts) {
         this.claims = claims;
         this.cancellations = cancellations;
+        this.myShifts = myShifts;
     }
 
     @PostMapping("/api/v1/shifts/{shiftId}/registrations")
@@ -51,6 +61,19 @@ class RegistrationController {
     ResponseEntity<Void> cancel(@PathVariable long id) {
         cancellations.cancel(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/api/v1/me/registrations")
+    @Operation(summary = "My shifts and weekly hours (SG-32)",
+            description = "scope=upcoming (default; not yet ended, soonest first) or past (latest first). "
+                    + "currentWeek shows confirmed hours against the weekly limit (BR-04).")
+    MyShifts myShifts(
+            @RequestParam(defaultValue = "upcoming")
+            @Pattern(regexp = "(?i)upcoming|past", message = "must be upcoming or past") String scope,
+            @RequestParam(required = false) RegistrationStatus status,
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
+        return myShifts.find(scope.equalsIgnoreCase("upcoming"), status, page, size);
     }
 
     record RegistrationResponse(long id, long shiftId, RegistrationStatus status, Instant startAt, Instant endAt,

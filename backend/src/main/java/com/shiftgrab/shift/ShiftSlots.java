@@ -1,5 +1,7 @@
 package com.shiftgrab.shift;
 
+import java.util.Collection;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -9,6 +11,9 @@ import java.util.Optional;
 public interface ShiftSlots {
 
     Optional<Shift> findById(long shiftId);
+
+    /** Batch lookup for list views (SG-32), keyed by id; unknown ids are simply absent. */
+    Map<Long, Shift> findAllById(Collection<Long> shiftIds);
 
     /**
      * ADR-0005 layer 2: {@code booked_slots + 1} only if a slot is free and the shift is OPEN, in one statement,

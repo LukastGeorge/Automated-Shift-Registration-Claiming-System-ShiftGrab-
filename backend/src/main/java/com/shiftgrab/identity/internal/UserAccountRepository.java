@@ -10,6 +10,8 @@ import java.util.Optional;
 
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.shiftgrab.identity.Role;
 import com.shiftgrab.identity.UserAccount;
@@ -36,7 +38,11 @@ public class UserAccountRepository {
     /**
      * Insert-or-update in one statement. Two first requests from the same user racing each other both
      * succeed: the loser of the race hits ON CONFLICT and updates instead of failing on the unique key.
+     *
+     * <p>Runs in its own transaction: profile provisioning can happen on any request, including inside a
+     * read-only transaction (a user's first {@code GET}), which would otherwise reject the write.
      */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public UserAccount upsertProfile(String keycloakSub, String fullName, String email, Role role) {
         return jdbc.sql("""
                 INSERT INTO users (keycloak_sub, full_name, email, role)

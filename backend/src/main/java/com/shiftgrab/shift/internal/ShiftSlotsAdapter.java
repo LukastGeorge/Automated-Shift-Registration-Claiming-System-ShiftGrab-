@@ -1,6 +1,10 @@
 package com.shiftgrab.shift.internal;
 
+import java.util.Collection;
+import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Component;
@@ -29,6 +33,18 @@ class ShiftSlotsAdapter implements ShiftSlots {
     @Override
     public Optional<Shift> findById(long shiftId) {
         return shifts.findById(shiftId);
+    }
+
+    @Override
+    public Map<Long, Shift> findAllById(Collection<Long> shiftIds) {
+        if (shiftIds.isEmpty()) {
+            return Map.of();
+        }
+        return jdbc.sql("SELECT " + ShiftRepository.COLUMNS + " FROM shifts WHERE id IN (:ids)")
+                .param("ids", shiftIds)
+                .query(ShiftRepository::map)
+                .stream()
+                .collect(Collectors.toMap(Shift::id, Function.identity()));
     }
 
     @Override
