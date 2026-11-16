@@ -2,6 +2,7 @@ package com.shiftgrab.shift.web;
 
 import java.net.URI;
 import java.time.OffsetDateTime;
+import java.util.Set;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -13,9 +14,12 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.shiftgrab.shared.web.PageResponse;
 import com.shiftgrab.shift.Shift;
+import com.shiftgrab.shift.ShiftStatus;
 import com.shiftgrab.shift.internal.ShiftManagementService;
 
 import jakarta.validation.Valid;
@@ -46,6 +50,20 @@ class ShiftController {
         return ResponseEntity.created(URI.create("/api/v1/shifts/" + shift.id()))
                 .eTag(Long.toString(shift.version()))
                 .body(ShiftResponse.from(shift));
+    }
+
+    @GetMapping
+    @Operation(summary = "Browse shifts (SG-24)",
+            description = "Filters on start time [from, to) and status, sorted by start time. Staff only see "
+                    + "OPEN/FULL shifts that have not started.")
+    PageResponse<ShiftResponse> search(
+            @RequestParam(required = false) OffsetDateTime from,
+            @RequestParam(required = false) OffsetDateTime to,
+            @RequestParam(required = false) Set<ShiftStatus> status,
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
+        return service.search(from == null ? null : from.toInstant(), to == null ? null : to.toInstant(), status,
+                page, size).map(ShiftResponse::from);
     }
 
     @GetMapping("/{id}")

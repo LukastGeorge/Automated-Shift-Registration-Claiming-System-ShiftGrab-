@@ -5,11 +5,16 @@ import java.sql.SQLException;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
+import com.shiftgrab.shared.web.PageResponse;
 import com.shiftgrab.shift.Shift;
 import com.shiftgrab.shift.ShiftStatus;
 
@@ -48,6 +53,37 @@ public class ShiftRepository {
                 .param("id", id)
                 .query(ShiftRepository::map)
                 .optional();
+    }
+
+    /**
+     * Filtered page sorted by start time (SG-24). Uses {@code idx_shifts_start_status}; {@code id} breaks ties so
+     * pages are stable when several shifts start at the same instant.
+     */
+    public PageResponse<Shift> search(ShiftQuery query, int page, int size) {
+        StringBuilder where = new StringBuilder(" WHERE status IN (:statuses)");
+        Map<String, Object> params = new HashMap<>();
+        params.put("statuses", query.statuses().stream().map(Enum::name).toList());
+        if (query.startsFrom() != null) {
+            where.append(" AND start_at >= :from");
+            params.put("from", utc(query.startsFrom()));
+        }
+        if (query.startsBefore() != null) {
+            where.append(" AND start_at < :to");
+            params.put("to", utc(query.startsBefore()));
+        }
+        long total = jdbc.sql("SELECT count(*) FROM shifts" + where).params(params).query(Long.class).single();
+        params.put("limit", size);
+        params.put("offset", (long) page * size);
+        List<Shift> content = jdbc.sql("SELECT " + COLUMNS + " FROM shifts" + where
+                        + " ORDER BY start_at, id LIMIT :limit OFFSET :offset")
+                .params(params)
+                .query(ShiftRepository::map)
+                .list();
+        return PageResponse.of(content, page, size, total);
+    }
+
+    /** Search criteria; bounds are optional, {@code statuses} must not be empty. */
+    public record ShiftQuery(Instant startsFrom, Instant startsBefore, Set<ShiftStatus> statuses) {
     }
 
     static OffsetDateTime utc(Instant instant) {
