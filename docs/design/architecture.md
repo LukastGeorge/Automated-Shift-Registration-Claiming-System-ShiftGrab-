@@ -227,6 +227,7 @@ erDiagram
 | POST | `/api/v1/shifts/{id}/cancel` | MANAGER | SG-22 |
 | POST, GET | `/api/v1/shift-templates`, `/api/v1/shift-templates/{id}` | MANAGER | SG-23 |
 | POST | `/api/v1/shift-templates/{id}/generate` (idempotent) | MANAGER | SG-23 |
+| GET | `/api/v1/users?role&page&size` | MANAGER | SG-25 |
 | PUT | `/api/v1/users/{id}/hourly-rate` | MANAGER | SG-25 |
 | POST | `/api/v1/shifts/{id}/registrations` | STAFF | SG-30 |
 | DELETE | `/api/v1/registrations/{id}` | STAFF (owner) | SG-31 |

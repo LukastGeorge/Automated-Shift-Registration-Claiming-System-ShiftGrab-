@@ -1,7 +1,11 @@
 package com.shiftgrab.identity.internal;
 
+import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -9,6 +13,7 @@ import org.springframework.stereotype.Repository;
 
 import com.shiftgrab.identity.Role;
 import com.shiftgrab.identity.UserAccount;
+import com.shiftgrab.shared.web.PageResponse;
 
 @Repository
 public class UserAccountRepository {
@@ -46,6 +51,40 @@ public class UserAccountRepository {
                 .param("role", role.name())
                 .query(UserAccountRepository::map)
                 .single();
+    }
+
+    /** Locks the row so that two managers changing the same rate are serialised and the old value is exact. */
+    public Optional<UserAccount> findByIdForUpdate(long id) {
+        return jdbc.sql("SELECT " + COLUMNS + " FROM users WHERE id = :id FOR UPDATE")
+                .param("id", id)
+                .query(UserAccountRepository::map)
+                .optional();
+    }
+
+    public UserAccount updateHourlyRate(long id, BigDecimal hourlyRate) {
+        return jdbc.sql("UPDATE users SET hourly_rate = :rate WHERE id = :id RETURNING " + COLUMNS)
+                .param("id", id)
+                .param("rate", hourlyRate)
+                .query(UserAccountRepository::map)
+                .single();
+    }
+
+    /** Users sorted by name; {@code role} null means all roles. */
+    public PageResponse<UserAccount> search(Role role, int page, int size) {
+        String where = role == null ? "" : " WHERE role = :role";
+        Map<String, Object> params = new HashMap<>();
+        if (role != null) {
+            params.put("role", role.name());
+        }
+        long total = jdbc.sql("SELECT count(*) FROM users" + where).params(params).query(Long.class).single();
+        params.put("limit", size);
+        params.put("offset", (long) page * size);
+        List<UserAccount> content = jdbc.sql("SELECT " + COLUMNS + " FROM users" + where
+                        + " ORDER BY full_name, id LIMIT :limit OFFSET :offset")
+                .params(params)
+                .query(UserAccountRepository::map)
+                .list();
+        return PageResponse.of(content, page, size, total);
     }
 
     private static UserAccount map(ResultSet rs, int rowNum) throws SQLException {
