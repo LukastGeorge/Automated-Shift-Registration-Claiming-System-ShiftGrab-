@@ -90,14 +90,16 @@ Mỗi story có tiêu chí nghiệm thu (AC) dạng Given/When/Then. Mã `SG-xx`
 **SG-20: Tạo ca.** *Là quản lý, tôi muốn tạo ca với thời gian, số suất và giờ mở đăng ký.*
 - AC1: Với dữ liệu hợp lệ (`end_at > start_at`, `max_slots ≥ 1`, `registration_open_at < start_at`), ca được tạo với trạng thái `OPEN`, `booked_slots = 0`.
 - AC2: Dữ liệu không hợp lệ thì nhận `400` kèm lỗi từng trường.
+- AC3 *(làm rõ ở Sprint 2)*: `start_at` phải ở tương lai và một ca dài tối đa **12 giờ**.
 
-**SG-21: Sửa ca.** AC: đổi được tên và `max_slots` theo BR-08; đổi giờ bị từ chối theo BR-09 với `409`. Hai người sửa cùng lúc thì người thứ hai nhận `409` (optimistic locking).
+**SG-21: Sửa ca.** AC: đổi được tên và `max_slots` theo BR-08; đổi giờ bị từ chối theo BR-09 với `409`. Hai người sửa cùng lúc thì người thứ hai nhận `409` (optimistic locking). *Làm rõ:* `GET` trả phiên bản trong header `ETag`; `PATCH` bắt buộc `If-Match` (thiếu → `428 PRECONDITION_REQUIRED`, lệch phiên bản → `409 CONCURRENT_MODIFICATION`).
 
-**SG-22: Hủy ca.** AC: Ca đã có người đăng ký, khi hủy thì trạng thái ca thành `CANCELLED`, mọi bản đăng ký thành `CANCELLED` (BR-07), nhân viên nhận email.
+**SG-22: Hủy ca.** AC: Ca đã có người đăng ký, khi hủy thì trạng thái ca thành `CANCELLED`, mọi bản đăng ký thành `CANCELLED` (BR-07), nhân viên nhận email. *Làm rõ:* Sprint 2 hủy tất cả trong một transaction và phát event kèm danh sách nhân viên bị ảnh hưởng; email do SG-41 gửi khi có listener.
 
 **SG-23: Ca lặp lại.** *Là quản lý, tôi muốn sinh ca hàng loạt từ mẫu (ngày trong tuần, giờ, số suất, khoảng ngày).*
 - AC1: Mẫu Thứ 2–6, 08:00–12:00, 3 suất, trong 4 tuần thì sinh ra 20 ca.
 - AC2: Việc sinh ca là tất cả hoặc không (một transaction).
+- AC3 *(làm rõ)*: Sinh lại là idempotent: ca đã tồn tại của mẫu được bỏ qua và báo lại, không tạo trùng. Ngày đã qua cũng bỏ qua.
 
 **SG-24: Xem danh sách ca.** AC: lọc theo khoảng ngày và trạng thái, phân trang, sắp theo `start_at`; nhân viên chỉ thấy ca tương lai `OPEN`/`FULL`.
 
@@ -151,3 +153,12 @@ Mỗi story có tiêu chí nghiệm thu (AC) dạng Given/When/Then. Mã `SG-xx`
 
 Mọi lỗi API theo RFC 7807 `application/problem+json`, kèm trường `code`:
 `VALIDATION_FAILED`, `SHIFT_NOT_FOUND`, `SHIFT_FULL`, `REGISTRATION_NOT_OPEN`, `SHIFT_OVERLAP`, `WEEKLY_LIMIT_EXCEEDED`, `ALREADY_REGISTERED`, `CANCEL_DEADLINE_PASSED`, `CONCURRENT_MODIFICATION`, `SHIFT_HAS_REGISTRATIONS`.
+
+Mã cho quản lý ca (Sprint 2): `SHIFT_CANCELLED` (409), `SHIFT_ALREADY_STARTED` (409), `TEMPLATE_NOT_FOUND` (404), `USER_NOT_FOUND` (404), `PRECONDITION_REQUIRED` (428, thiếu `If-Match`).
+
+Các mã chung cho mọi lỗi còn lại, để client luôn rẽ nhánh theo `code`: `MALFORMED_REQUEST` (400), `UNAUTHORIZED` (401), `FORBIDDEN` (403), `NOT_FOUND` (404), `METHOD_NOT_ALLOWED` (405), `DATA_CONFLICT` (409, ràng buộc CSDL chưa được ánh xạ), `INTERNAL_ERROR` (500, không lộ chi tiết nội bộ). `VALIDATION_FAILED` có thêm `errors: [{field, message}]`.
+
+```json
+{ "type": "about:blank", "title": "Shift is full", "status": 409, "detail": "…",
+  "instance": "/api/v1/shifts/42/registrations", "code": "SHIFT_FULL" }
+```

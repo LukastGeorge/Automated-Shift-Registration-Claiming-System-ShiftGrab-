@@ -1,4 +1,4 @@
-package com.shiftgrab.lock;
+package com.shiftgrab.shared.lock;
 
 import java.util.function.Supplier;
 

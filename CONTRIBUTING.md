@@ -34,6 +34,10 @@ A story is done when:
 4. API docs, ADRs and user docs are updated where relevant.
 5. The PR is reviewed and merged into `develop`.
 
+### Running the backend quality gate locally
+
+`mvn verify` needs JDK 21 and a running Docker daemon (Testcontainers starts PostgreSQL and Keycloak). It fails if JaCoCo coverage is below **70% lines / 60% branches**; the HTML report is at `backend/target/site/jacoco/index.html`. CI publishes the same numbers in the job summary and the report as the `jacoco-report` artifact.
+
 ## Versioning
 
 Semantic Versioning. Release notes are kept in `CHANGELOG.md`.

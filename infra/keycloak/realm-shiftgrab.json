@@ -1,0 +1,118 @@
+{
+  "realm": "shiftgrab",
+  "displayName": "ShiftGrab",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "resetPasswordAllowed": false,
+  "bruteForceProtected": true,
+  "failureFactor": 5,
+  "accessTokenLifespan": 300,
+  "ssoSessionIdleTimeout": 1800,
+  "internationalizationEnabled": true,
+  "supportedLocales": ["en", "vi"],
+  "defaultLocale": "vi",
+  "roles": {
+    "realm": [
+      { "name": "MANAGER", "description": "Creates and manages shifts, views reports and audit log" },
+      { "name": "STAFF", "description": "Claims and cancels shifts" }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "shiftgrab-frontend",
+      "name": "ShiftGrab web app",
+      "description": "Angular SPA. Public client, Authorization Code + PKCE (S256).",
+      "enabled": true,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": ["http://localhost:4200/*"],
+      "webOrigins": ["http://localhost:4200"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:4200/*"
+      },
+      "protocolMappers": [
+        {
+          "name": "shiftgrab-api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "shiftgrab-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "shiftgrab-dev-cli",
+      "name": "ShiftGrab developer CLI (DEV ONLY)",
+      "description": "Password grant for curl, Swagger and k6 in local/test environments. Must not exist in production.",
+      "enabled": true,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "protocolMappers": [
+        {
+          "name": "shiftgrab-api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "shiftgrab-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "manager",
+      "email": "manager@shiftgrab.local",
+      "firstName": "Lan",
+      "lastName": "Tran",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "manager123", "temporary": false }],
+      "realmRoles": ["MANAGER"]
+    },
+    {
+      "username": "staff1",
+      "email": "staff1@shiftgrab.local",
+      "firstName": "An",
+      "lastName": "Nguyen",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "staff123", "temporary": false }],
+      "realmRoles": ["STAFF"]
+    },
+    {
+      "username": "staff2",
+      "email": "staff2@shiftgrab.local",
+      "firstName": "Binh",
+      "lastName": "Le",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "staff123", "temporary": false }],
+      "realmRoles": ["STAFF"]
+    },
+    {
+      "username": "staff3",
+      "email": "staff3@shiftgrab.local",
+      "firstName": "Chi",
+      "lastName": "Pham",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "staff123", "temporary": false }],
+      "realmRoles": ["STAFF"]
+    }
+  ]
+}

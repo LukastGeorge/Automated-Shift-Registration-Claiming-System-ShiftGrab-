@@ -90,14 +90,16 @@ Each story has acceptance criteria (AC) in Given/When/Then form. IDs `SG-xx` mat
 **SG-20 — Create a shift.** *As a manager, I want to create a shift with time, slots and opening time.*
 - AC1: Given valid data (`end_at > start_at`, `max_slots ≥ 1`, `registration_open_at < start_at`), when I submit, then the shift is created with status `OPEN` and `booked_slots = 0`.
 - AC2: Given invalid data, then I receive `400` with field-level errors.
+- AC3 *(clarified in Sprint 2)*: `start_at` must be in the future and a shift lasts at most **12 h**.
 
-**SG-21 — Edit a shift.** AC: name and `max_slots` can be changed subject to BR-08; time changes are rejected per BR-09 with `409`. Concurrent edits are detected (optimistic locking) and the second one gets `409`.
+**SG-21 — Edit a shift.** AC: name and `max_slots` can be changed subject to BR-08; time changes are rejected per BR-09 with `409`. Concurrent edits are detected (optimistic locking) and the second one gets `409`. *Clarified:* `GET` returns the version as `ETag`; `PATCH` requires `If-Match` (missing → `428 PRECONDITION_REQUIRED`, stale → `409 CONCURRENT_MODIFICATION`).
 
-**SG-22 — Cancel a shift.** AC: Given a shift with registrations, when I cancel it, then its status becomes `CANCELLED`, all registrations become `CANCELLED` (BR-07), and staff receive an e-mail.
+**SG-22 — Cancel a shift.** AC: Given a shift with registrations, when I cancel it, then its status becomes `CANCELLED`, all registrations become `CANCELLED` (BR-07), and staff receive an e-mail. *Clarified:* Sprint 2 cancels everything in one transaction and publishes an event listing the affected staff; the e-mail itself is sent by SG-41 when that listener exists.
 
 **SG-23 — Recurring shifts.** *As a manager, I want to generate shifts from a template (weekdays, time, slots, date range).*
 - AC1: Given template Mon–Fri 08:00–12:00, 3 slots, for 4 weeks, when I generate, then 20 shifts are created.
 - AC2: Generation is all-or-nothing (single transaction).
+- AC3 *(clarified)*: Generating again is idempotent: shifts that already exist for the template are skipped and reported, never duplicated. Dates already in the past are skipped.
 
 **SG-24 — Browse shifts.** AC: filter by date range and status, paginated, sorted by `start_at`; staff see only `OPEN`/`FULL` future shifts.
 
@@ -151,3 +153,12 @@ Each story has acceptance criteria (AC) in Given/When/Then form. IDs `SG-xx` mat
 
 All API errors use RFC 7807 `application/problem+json` with an extra `code` field:
 `VALIDATION_FAILED`, `SHIFT_NOT_FOUND`, `SHIFT_FULL`, `REGISTRATION_NOT_OPEN`, `SHIFT_OVERLAP`, `WEEKLY_LIMIT_EXCEEDED`, `ALREADY_REGISTERED`, `CANCEL_DEADLINE_PASSED`, `CONCURRENT_MODIFICATION`, `SHIFT_HAS_REGISTRATIONS`.
+
+Shift management codes (Sprint 2): `SHIFT_CANCELLED` (409), `SHIFT_ALREADY_STARTED` (409), `TEMPLATE_NOT_FOUND` (404), `USER_NOT_FOUND` (404), `PRECONDITION_REQUIRED` (428, `If-Match` missing).
+
+Generic codes cover every other error so that clients can always branch on `code`: `MALFORMED_REQUEST` (400), `UNAUTHORIZED` (401), `FORBIDDEN` (403), `NOT_FOUND` (404), `METHOD_NOT_ALLOWED` (405), `DATA_CONFLICT` (409, unmapped database constraint), `INTERNAL_ERROR` (500, no internal details exposed). `VALIDATION_FAILED` adds `errors: [{field, message}]`.
+
+```json
+{ "type": "about:blank", "title": "Shift is full", "status": 409, "detail": "…",
+  "instance": "/api/v1/shifts/42/registrations", "code": "SHIFT_FULL" }
+```
