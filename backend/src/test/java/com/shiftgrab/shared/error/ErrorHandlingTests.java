@@ -181,6 +181,12 @@ class ErrorHandlingTests {
         }
 
         @Test
+        void temporaryOverloadCarriesRetryAfter() throws Exception {
+            expectProblem(mvc.perform(get("/api/test/errors/busy").with(staff())), 503, "CLAIM_BUSY")
+                    .andExpect(header().string("Retry-After", "1"));
+        }
+
+        @Test
         void optimisticLockIsConcurrentModification() throws Exception {
             expectProblem(mvc.perform(get("/api/test/errors/stale").with(staff())), 409, "CONCURRENT_MODIFICATION");
         }
@@ -245,6 +251,11 @@ class ErrorHandlingTests {
         String business() {
             throw new BusinessException(ErrorCode.REGISTRATION_NOT_OPEN, "Registration opens at 08:00",
                     Map.of("shiftId", 42));
+        }
+
+        @GetMapping("/busy")
+        String busy() {
+            throw new BusinessException(ErrorCode.CLAIM_BUSY, "Retry in a moment");
         }
 
         @GetMapping("/stale")

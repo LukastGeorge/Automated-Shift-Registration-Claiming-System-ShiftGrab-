@@ -115,6 +115,7 @@ Each story has acceptance criteria (AC) in Given/When/Then form. IDs `SG-xx` mat
 - AC5: Given the weekly limit would be exceeded, then `409 WEEKLY_LIMIT_EXCEEDED`.
 - AC6: Given I already hold this shift, then `409 ALREADY_REGISTERED` (idempotent double-click).
 - AC7: **Given N concurrent claims on a shift with M slots (N > M), across multiple backend instances, then exactly M succeed and the rest get `SHIFT_FULL`.**
+- *Clarified in Sprint 3:* if a request cannot get its locks within 3 s it receives `503 CLAIM_BUSY` with `Retry-After` (it is *not* told the shift is full). If the lock service (Redis) is down, claiming fails closed with `503 LOCK_UNAVAILABLE`; all other features keep working. For BR-04, a shift crossing a week boundary counts its hours in each ISO week it actually overlaps. The weekly limit (40 h) and the cancel deadline (24 h) are deployment settings.
 
 **SG-31 — Cancel my registration.** AC: before the deadline → `204`, slot released, shift back to `OPEN` (BR-11); after → `409 CANCEL_DEADLINE_PASSED`.
 
@@ -155,6 +156,8 @@ All API errors use RFC 7807 `application/problem+json` with an extra `code` fiel
 `VALIDATION_FAILED`, `SHIFT_NOT_FOUND`, `SHIFT_FULL`, `REGISTRATION_NOT_OPEN`, `SHIFT_OVERLAP`, `WEEKLY_LIMIT_EXCEEDED`, `ALREADY_REGISTERED`, `CANCEL_DEADLINE_PASSED`, `CONCURRENT_MODIFICATION`, `SHIFT_HAS_REGISTRATIONS`.
 
 Shift management codes (Sprint 2): `SHIFT_CANCELLED` (409), `SHIFT_ALREADY_STARTED` (409), `TEMPLATE_NOT_FOUND` (404), `USER_NOT_FOUND` (404), `PRECONDITION_REQUIRED` (428, `If-Match` missing).
+
+Claiming under load (Sprint 3): `CLAIM_BUSY` (503, `Retry-After: 1`), `LOCK_UNAVAILABLE` (503, `Retry-After: 5`).
 
 Generic codes cover every other error so that clients can always branch on `code`: `MALFORMED_REQUEST` (400), `UNAUTHORIZED` (401), `FORBIDDEN` (403), `NOT_FOUND` (404), `METHOD_NOT_ALLOWED` (405), `DATA_CONFLICT` (409, unmapped database constraint), `INTERNAL_ERROR` (500, no internal details exposed). `VALIDATION_FAILED` adds `errors: [{field, message}]`.
 

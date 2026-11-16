@@ -36,10 +36,14 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(BusinessException.class)
-    ProblemDetail handleBusiness(BusinessException ex, HttpServletRequest request) {
+    ResponseEntity<ProblemDetail> handleBusiness(BusinessException ex, HttpServletRequest request) {
         ProblemDetail problem = Problems.of(ex.code(), ex.getMessage(), request.getRequestURI());
         ex.properties().forEach(problem::setProperty);
-        return problem;
+        ResponseEntity.BodyBuilder response = ResponseEntity.status(ex.code().status());
+        if (ex.code().retryAfterSeconds() > 0) {
+            response.header(HttpHeaders.RETRY_AFTER, Integer.toString(ex.code().retryAfterSeconds()));
+        }
+        return response.body(problem);
     }
 
     @ExceptionHandler(ConstraintViolationException.class)

@@ -27,6 +27,10 @@ public enum ErrorCode {
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "User not found"),
     PRECONDITION_REQUIRED(HttpStatus.PRECONDITION_REQUIRED, "If-Match header required"),
 
+    // Claiming under load (Sprint 3, ADR-0004): both are temporary, so they carry Retry-After
+    CLAIM_BUSY(HttpStatus.SERVICE_UNAVAILABLE, "Too many concurrent requests", 1),
+    LOCK_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "Claiming is temporarily unavailable", 5),
+
     // Generic codes so that every error, including framework ones, carries a code
     MALFORMED_REQUEST(HttpStatus.BAD_REQUEST, "Malformed request"),
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "Authentication required"),
@@ -38,10 +42,21 @@ public enum ErrorCode {
 
     private final HttpStatus status;
     private final String title;
+    private final int retryAfterSeconds;
 
     ErrorCode(HttpStatus status, String title) {
+        this(status, title, 0);
+    }
+
+    ErrorCode(HttpStatus status, String title, int retryAfterSeconds) {
         this.status = status;
         this.title = title;
+        this.retryAfterSeconds = retryAfterSeconds;
+    }
+
+    /** Seconds for the {@code Retry-After} header, or 0 when the error is not worth retrying as is. */
+    public int retryAfterSeconds() {
+        return retryAfterSeconds;
     }
 
     public HttpStatus status() {
