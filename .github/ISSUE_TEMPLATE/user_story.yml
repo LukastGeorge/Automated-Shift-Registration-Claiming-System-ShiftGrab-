@@ -1,0 +1,37 @@
+name: User Story
+description: A unit of user-facing value, sized to fit within one sprint
+title: "[SG-XX] As a <role>, I want <goal>"
+labels: ["type:story"]
+body:
+  - type: textarea
+    id: story
+    attributes:
+      label: User story
+      description: As a <MANAGER|STAFF>, I want <goal> so that <benefit>.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Use Given / When / Then. Each criterion must be testable.
+      value: |
+        - [ ] Given ..., when ..., then ...
+    validations:
+      required: true
+  - type: dropdown
+    id: module
+    attributes:
+      label: Module
+      options: [identity, shift, registration, notification, realtime, reporting, audit, frontend, infra, docs]
+    validations:
+      required: true
+  - type: dropdown
+    id: estimate
+    attributes:
+      label: Estimate (story points)
+      options: ["1", "2", "3", "5", "8"]
+  - type: textarea
+    id: notes
+    attributes:
+      label: Technical notes
