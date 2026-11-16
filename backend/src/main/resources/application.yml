@@ -43,6 +43,9 @@ shiftgrab:
   time-zone: Asia/Ho_Chi_Minh
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200}
+  rules:
+    weekly-hour-limit: ${WEEKLY_HOUR_LIMIT:40h}   # BR-04
+    cancel-deadline: ${CANCEL_DEADLINE:24h}        # BR-06
   lock:                       # ADR-0004
     provider: ${LOCK_PROVIDER:redis}          # redis | in-memory (single instance only)
     redis-address: ${REDIS_ADDRESS:redis://localhost:6379}
