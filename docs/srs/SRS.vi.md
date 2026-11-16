@@ -115,6 +115,7 @@ Mỗi story có tiêu chí nghiệm thu (AC) dạng Given/When/Then. Mã `SG-xx`
 - AC5: Vượt hạn mức giờ/tuần thì `409 WEEKLY_LIMIT_EXCEEDED`.
 - AC6: Đã giữ ca này rồi thì `409 ALREADY_REGISTERED` (chống bấm đúp).
 - AC7: **N request giành đồng thời vào ca có M suất (N > M), trên nhiều instance backend, thì đúng M request thành công, phần còn lại nhận `SHIFT_FULL`.**
+- *Làm rõ ở Sprint 3:* request không lấy được khóa trong 3 giây thì nhận `503 CLAIM_BUSY` kèm `Retry-After` (không báo nhầm là ca đã đầy). Nếu dịch vụ khóa (Redis) sập thì việc giành ca bị từ chối với `503 LOCK_UNAVAILABLE`; mọi chức năng khác vẫn chạy. Với BR-04, ca vắt qua ranh giới tuần được tính giờ vào từng tuần ISO theo phần thời gian thực tế nằm trong tuần đó. Hạn mức 40 giờ/tuần và hạn hủy 24 giờ là cấu hình triển khai.
 
 **SG-31: Hủy đăng ký.** AC: trước hạn thì `204`, suất được trả, ca về `OPEN` (BR-11); quá hạn thì `409 CANCEL_DEADLINE_PASSED`.
 
@@ -155,6 +156,8 @@ Mọi lỗi API theo RFC 7807 `application/problem+json`, kèm trường `code`:
 `VALIDATION_FAILED`, `SHIFT_NOT_FOUND`, `SHIFT_FULL`, `REGISTRATION_NOT_OPEN`, `SHIFT_OVERLAP`, `WEEKLY_LIMIT_EXCEEDED`, `ALREADY_REGISTERED`, `CANCEL_DEADLINE_PASSED`, `CONCURRENT_MODIFICATION`, `SHIFT_HAS_REGISTRATIONS`.
 
 Mã cho quản lý ca (Sprint 2): `SHIFT_CANCELLED` (409), `SHIFT_ALREADY_STARTED` (409), `TEMPLATE_NOT_FOUND` (404), `USER_NOT_FOUND` (404), `PRECONDITION_REQUIRED` (428, thiếu `If-Match`).
+
+Giành ca khi tải cao (Sprint 3): `CLAIM_BUSY` (503, `Retry-After: 1`), `LOCK_UNAVAILABLE` (503, `Retry-After: 5`).
 
 Các mã chung cho mọi lỗi còn lại, để client luôn rẽ nhánh theo `code`: `MALFORMED_REQUEST` (400), `UNAUTHORIZED` (401), `FORBIDDEN` (403), `NOT_FOUND` (404), `METHOD_NOT_ALLOWED` (405), `DATA_CONFLICT` (409, ràng buộc CSDL chưa được ánh xạ), `INTERNAL_ERROR` (500, không lộ chi tiết nội bộ). `VALIDATION_FAILED` có thêm `errors: [{field, message}]`.
 

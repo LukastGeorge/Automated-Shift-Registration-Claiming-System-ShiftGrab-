@@ -14,6 +14,13 @@ The prototype's `InMemoryShiftLockProvider` uses a `ReentrantLock` per shift. It
 ## Decision
 Option 3, implemented as `RedisLockProvider` behind the existing `ShiftLockProvider` interface (Strategy pattern from the prototype). `InMemoryShiftLockProvider` remains for unit tests. Locks are acquired in a fixed order — `user:{id}` then `shift:{id}` — with `waitTime = 3 s`, `leaseTime = 10 s`. Timeouts return `503` with `Retry-After`.
 
+### Implementation notes (SG-33)
+- `ShiftLockProvider.executeWithLocks(keys, task)` acquires keys in the given order with **one overall wait budget** (3 s for all keys together) and releases them in reverse order, also when the task throws or a later key times out.
+- Leases are explicit (10 s, no Redisson watchdog), so a crashed instance cannot hold a lock forever.
+- **Fail closed** (decision of 2026-11-16): if Redis is unreachable the claim is refused with `503 LOCK_UNAVAILABLE` rather than checking BR-04 without mutual exclusion. Redisson connects lazily, so the rest of the application starts and works without Redis.
+- Timer `shiftgrab.lock.wait{result=acquired|timeout|error}`.
+- `shiftgrab.lock.provider=in-memory` selects the single-JVM implementation (local experiments only).
+
 ## Consequences
 - ➕ Correct rule checks across instances; DB connections are not held while waiting.
 - ➕ Strategy interface keeps business code independent of the lock technology.
