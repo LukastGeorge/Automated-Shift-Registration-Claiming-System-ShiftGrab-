@@ -91,6 +91,29 @@ class IdentityApiTests {
     }
 
     @Test
+    @DisplayName("30 parallel first requests of a new user all succeed and create one profile")
+    void parallelFirstRequestsProvisionOnce() throws Exception {
+        java.util.concurrent.ExecutorService pool = java.util.concurrent.Executors.newFixedThreadPool(30);
+        java.util.concurrent.CountDownLatch go = new java.util.concurrent.CountDownLatch(1);
+        List<java.util.concurrent.Future<Integer>> statuses = new java.util.ArrayList<>();
+        for (int i = 0; i < 30; i++) {
+            statuses.add(pool.submit(() -> {
+                go.await();
+                return mvc.perform(get("/api/v1/me").with(token("new-user", "Giang", "STAFF")))
+                        .andReturn().getResponse().getStatus();
+            }));
+        }
+        go.countDown();
+        for (java.util.concurrent.Future<Integer> status : statuses) {
+            assertThat(status.get(30, java.util.concurrent.TimeUnit.SECONDS)).isEqualTo(200);
+        }
+        pool.shutdown();
+
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM users WHERE keycloak_sub = 'new-user'", Integer.class))
+                .isEqualTo(1);
+    }
+
+    @Test
     @DisplayName("A token without a ShiftGrab role is rejected with 403")
     void rejectsTokenWithoutApplicationRole() throws Exception {
         mvc.perform(get("/api/v1/me").with(token("outsider", "Outsider", "offline_access")))

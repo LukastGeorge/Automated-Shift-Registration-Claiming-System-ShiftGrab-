@@ -14,6 +14,7 @@ import java.util.Optional;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -82,6 +83,28 @@ class CurrentUserServiceTests {
         when(repository.upsertProfile("sub-3", "sub-3", "c@shiftgrab.test", Role.STAFF)).thenReturn(created);
 
         assertThat(service.currentUser()).isSameAs(created);
+    }
+
+    @Test
+    void retriesOnceWhenAParallelFirstRequestInsertedTheProfile() {
+        authenticate(jwt("sub-4", "Dung", "d@shiftgrab.test", null), "ROLE_STAFF");
+        when(repository.findByKeycloakSub("sub-4")).thenReturn(Optional.empty());
+        UserAccount created = account("sub-4", "Dung", "d@shiftgrab.test", Role.STAFF);
+        when(repository.upsertProfile("sub-4", "Dung", "d@shiftgrab.test", Role.STAFF))
+                .thenThrow(new DuplicateKeyException("uq_users_email"))
+                .thenReturn(created);
+
+        assertThat(service.currentUser()).isSameAs(created);
+    }
+
+    @Test
+    void genuineEmailClashStillFails() {
+        authenticate(jwt("sub-5", "Eve", "taken@shiftgrab.test", null), "ROLE_STAFF");
+        when(repository.findByKeycloakSub("sub-5")).thenReturn(Optional.empty());
+        when(repository.upsertProfile(any(), any(), any(), any()))
+                .thenThrow(new DuplicateKeyException("uq_users_email"));
+
+        assertThatThrownBy(service::currentUser).isInstanceOf(DuplicateKeyException.class);
     }
 
     private static Jwt jwt(String sub, String name, String email, String username) {
