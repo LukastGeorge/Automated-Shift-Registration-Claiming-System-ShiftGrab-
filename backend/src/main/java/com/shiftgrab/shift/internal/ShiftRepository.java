@@ -56,6 +56,36 @@ public class ShiftRepository {
     }
 
     /**
+     * Applies an edit only if nothing relevant changed since the caller read the shift (SG-21). Every guard is
+     * in the WHERE clause, so the check and the write are one atomic step even against concurrent claims:
+     * version (optimistic lock), BR-08 ({@code booked_slots <= max_slots}) and BR-09 (no time change once
+     * booked). Status is recomputed from occupancy (BR-11). Empty result = a guard failed in a race.
+     */
+    public Optional<Shift> update(Shift edited, long expectedVersion, boolean timesChanged) {
+        return jdbc.sql("""
+                UPDATE shifts
+                   SET name = :name, start_at = :startAt, end_at = :endAt, registration_open_at = :openAt,
+                       max_slots = :maxSlots,
+                       status = CASE WHEN booked_slots >= :maxSlots THEN 'FULL' ELSE 'OPEN' END,
+                       version = version + 1
+                 WHERE id = :id AND version = :version AND status <> 'CANCELLED'
+                   AND booked_slots <= :maxSlots
+                   AND (NOT CAST(:timesChanged AS BOOLEAN) OR booked_slots = 0)
+                RETURNING %s
+                """.formatted(COLUMNS))
+                .param("id", edited.id())
+                .param("version", expectedVersion)
+                .param("name", edited.name())
+                .param("startAt", utc(edited.startAt()))
+                .param("endAt", utc(edited.endAt()))
+                .param("openAt", utc(edited.registrationOpenAt()))
+                .param("maxSlots", edited.maxSlots())
+                .param("timesChanged", timesChanged)
+                .query(ShiftRepository::map)
+                .optional();
+    }
+
+    /**
      * Filtered page sorted by start time (SG-24). Uses {@code idx_shifts_start_status}; {@code id} breaks ties so
      * pages are stable when several shifts start at the same instant.
      */

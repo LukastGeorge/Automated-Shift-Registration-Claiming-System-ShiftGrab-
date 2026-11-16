@@ -217,7 +217,7 @@ erDiagram
 | GET | `/api/v1/shifts?from&to&status&page` | any | SG-24 |
 | GET | `/api/v1/shifts/{id}` (returns `ETag`) | any | SG-20 |
 | POST | `/api/v1/shifts` | MANAGER | SG-20 |
-| PATCH | `/api/v1/shifts/{id}` | MANAGER | SG-21 |
+| PATCH | `/api/v1/shifts/{id}` (`If-Match` required) | MANAGER | SG-21 |
 | POST | `/api/v1/shifts/{id}/cancel` | MANAGER | SG-22 |
 | POST | `/api/v1/shift-templates/{id}/generate` | MANAGER | SG-23 |
 | PUT | `/api/v1/users/{id}/hourly-rate` | MANAGER | SG-25 |
