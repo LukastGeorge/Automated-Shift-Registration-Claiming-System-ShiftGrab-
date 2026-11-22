@@ -26,6 +26,24 @@ public class TestcontainersConfiguration {
         return new GenericContainer<>(DockerImageName.parse("redis:8.10.3-alpine")).withExposedPorts(6379);
     }
 
+    @Bean
+    MailpitContainer mailpitContainer() {
+        return new MailpitContainer();
+    }
+
+    /**
+     * E-mails go to Mailpit (SG-41). Scheduled jobs are off: tests call them directly, so nothing runs in the
+     * background between a test's action and its assertions.
+     */
+    @Bean
+    DynamicPropertyRegistrar mailAndSchedulingProperties(MailpitContainer mailpitContainer) {
+        return registry -> {
+            registry.add("spring.mail.host", mailpitContainer::getHost);
+            registry.add("spring.mail.port", () -> mailpitContainer.getMappedPort(MailpitContainer.SMTP_PORT));
+            registry.add("shiftgrab.scheduling.enabled", () -> "false");
+        };
+    }
+
     /** Redisson is configured from {@code shiftgrab.lock.redis-address}, not from Spring Data Redis. */
     @Bean
     DynamicPropertyRegistrar redisProperties(GenericContainer<?> redisContainer) {

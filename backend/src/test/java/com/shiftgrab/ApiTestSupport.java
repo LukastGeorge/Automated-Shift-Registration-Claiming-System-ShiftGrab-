@@ -45,7 +45,8 @@ public abstract class ApiTestSupport {
 
     @BeforeEach
     void cleanDatabase() {
-        jdbc.execute("TRUNCATE shift_registrations, shifts, shift_templates, audit_log, users RESTART IDENTITY CASCADE");
+        jdbc.execute("TRUNCATE shift_registrations, shifts, shift_templates, audit_log, users, event_publication "
+                + "RESTART IDENTITY CASCADE");
     }
 
     protected JwtRequestPostProcessor manager() {
@@ -70,6 +71,13 @@ public abstract class ApiTestSupport {
                 INSERT INTO users (keycloak_sub, full_name, email, role) VALUES (?, ?, ?, ?)
                 ON CONFLICT (keycloak_sub) DO UPDATE SET role = EXCLUDED.role RETURNING id
                 """, Long.class, sub, sub, sub + "@shiftgrab.test", role);
+    }
+
+    /** A shift whose registration is open right now (opened yesterday), so staff can claim it. */
+    protected long insertOpenShift(String name, String startAt, String endAt, int maxSlots) {
+        long id = insertShift(name, startAt, endAt, maxSlots, 0, "OPEN");
+        jdbc.update("UPDATE shifts SET registration_open_at = now() - interval '1 day' WHERE id = ?", id);
+        return id;
     }
 
     /** Inserts a shift bypassing the API, e.g. one in the past that the API would refuse to create. */

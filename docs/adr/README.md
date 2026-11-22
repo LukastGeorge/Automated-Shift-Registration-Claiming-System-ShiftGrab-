@@ -12,5 +12,6 @@ An ADR captures one significant decision: the context, the options considered, t
 | [0004](0004-redis-distributed-lock.md) | Redis (Redisson) distributed lock behind `ShiftLockProvider` | Accepted |
 | [0005](0005-overbooking-defence-in-depth.md) | Three layers of defence against overbooking | Accepted |
 | [0006](0006-vps-docker-compose.md) | Single VPS with Docker Compose and GitHub Actions CD | Accepted |
+| [0007](0007-transactional-outbox-for-side-effects.md) | Side effects after commit through a transactional outbox | Accepted |
 
 Template: [template.md](template.md)
