@@ -23,7 +23,7 @@
         <springdoc.version>3.2.0</springdoc.version>
         <testcontainers-keycloak.version>4.4.0</testcontainers-keycloak.version>
         <jacoco.version>0.8.16</jacoco.version>
-        <redisson.version>3.50.0</redisson.version>
+        <redisson.version>4.8.0</redisson.version>
         <!-- Quality gate (project plan: coverage >= 70%) -->
         <jacoco.line.minimum>0.70</jacoco.line.minimum>
         <jacoco.branch.minimum>0.60</jacoco.branch.minimum>
