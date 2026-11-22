@@ -1,5 +1,6 @@
 package com.shiftgrab.identity.internal;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.stereotype.Component;
@@ -19,5 +20,10 @@ class UsersAdapter implements Users {
     @Override
     public Optional<UserAccount> findById(long userId) {
         return repository.findById(userId);
+    }
+
+    @Override
+    public List<UserAccount> findReminderRecipients() {
+        return repository.findStaffWithReminders();
     }
 }

@@ -127,7 +127,7 @@ Mỗi story có tiêu chí nghiệm thu (AC) dạng Given/When/Then. Mã `SG-xx`
 
 **SG-41: Thông báo email.** AC: gửi email khi giành ca thành công, khi hủy, khi quản lý hủy ca; lỗi gửi email không làm rollback việc giành ca. *Làm rõ ở Sprint 5:* email cũng không bị mất. Email chưa gửi được sẽ được gửi lại cho tới khi mail server nhận (ADR-0007), nên trong trường hợp hiếm một người có thể nhận trùng email. Mỗi email có tiếng Việt trước, tiếng Anh sau.
 
-**SG-42: Nhắc giờ mở đăng ký.** AC: nhân viên bật nhận nhắc sẽ nhận email 30 phút trước khi ca mở; với 2 instance thì mỗi nhắc nhở chỉ gửi đúng một lần.
+**SG-42: Nhắc giờ mở đăng ký.** AC: nhân viên bật nhận nhắc sẽ nhận email 30 phút trước khi ca mở; với 2 instance thì mỗi nhắc nhở chỉ gửi đúng một lần. *Làm rõ ở Sprint 5:* nhân viên bật hoặc tắt nhắc nhở trên trang hồ sơ. Mỗi người nhận một email liệt kê tất cả các ca sắp mở trong 30 phút tới. Mỗi ca chỉ được nhắc một lần (có dấu đánh dấu trong database), và những ca đã bị hủy hoặc đã đầy trong lúc chờ sẽ không được nhắc.
 
 ### Epic E5: Báo cáo & audit
 
