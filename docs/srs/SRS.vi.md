@@ -133,7 +133,7 @@ Mỗi story có tiêu chí nghiệm thu (AC) dạng Given/When/Then. Mã `SG-xx`
 
 **SG-50: Báo cáo giờ công & lương.** AC: theo khoảng ngày, với mỗi nhân viên: số ca, tổng giờ, tổng tiền (BR-10); có dòng tổng.
 **SG-51: Xuất file.** AC: tải báo cáo dạng CSV và XLSX.
-**SG-52: Audit log.** AC: mọi thao tác tạo/sửa/hủy/giành đều ghi người thực hiện, hành động, đối tượng, thời điểm, tóm tắt trước/sau; quản lý lọc được theo người, hành động, ngày.
+**SG-52: Audit log.** AC: mọi thao tác tạo/sửa/hủy/giành đều ghi người thực hiện, hành động, đối tượng, thời điểm, tóm tắt trước/sau; quản lý lọc được theo người, hành động, ngày. *Làm rõ ở Sprint 5:* mỗi dòng audit được ghi trong cùng transaction với thay đổi mà nó ghi nhận, nên không có thay đổi nào thiếu dòng audit, và thay đổi bị rollback thì cũng không để lại dòng nào. Audit log chỉ được thêm, không được sửa hay xóa, và điều này được đảm bảo bằng trigger trong database (NFR-10). Ngoài ra còn ghi lại: tạo mẫu ca, sinh ca, đổi đơn giá, và các bản đăng ký bị hủy theo ca (kèm danh sách nhân viên bị ảnh hưởng).
 
 ## 5. Yêu cầu phi chức năng
 
