@@ -1,0 +1,114 @@
+<header class="head">
+  <div>
+    <h1>{{ 'tpl.title' | t }}</h1>
+    <p class="sub">{{ 'tpl.subtitle' | t }}</p>
+  </div>
+  @if (!showForm()) {
+    <button mat-flat-button type="button" (click)="showForm.set(true)" data-testid="new-template">
+      <mat-icon aria-hidden="true">add</mat-icon>
+      {{ 'tpl.new' | t }}
+    </button>
+  }
+</header>
+
+@if (showForm()) {
+  <mat-card appearance="outlined" class="form-card">
+    <form [formGroup]="form" (ngSubmit)="create()">
+      <mat-form-field class="wide">
+        <mat-label>{{ 'form.name' | t }}</mat-label>
+        <input matInput formControlName="name" maxlength="100" data-testid="tpl-name" />
+        @if (form.controls.name.hasError('required')) {
+          <mat-error>{{ 'app.required' | t }}</mat-error>
+        }
+      </mat-form-field>
+
+      <div class="wide days">
+        <span class="label" id="weekdays-label">{{ 'tpl.weekdays' | t }}</span>
+        <mat-button-toggle-group multiple formControlName="weekdays" aria-labelledby="weekdays-label">
+          @for (day of weekdays; track day) {
+            <mat-button-toggle [value]="day">{{ weekdayKey(day) | t }}</mat-button-toggle>
+          }
+        </mat-button-toggle-group>
+        @if (form.controls.weekdays.touched && form.controls.weekdays.invalid) {
+          <span class="error" role="alert">{{ 'tpl.pickWeekday' | t }}</span>
+        }
+      </div>
+
+      <mat-form-field>
+        <mat-label>{{ 'tpl.startTime' | t }}</mat-label>
+        <input matInput type="time" formControlName="startTime" />
+      </mat-form-field>
+      <mat-form-field>
+        <mat-label>{{ 'tpl.endTime' | t }}</mat-label>
+        <input matInput type="time" formControlName="endTime" />
+        <mat-hint>{{ 'tpl.overnight' | t }}: {{ form.controls.endTime.value <= form.controls.startTime.value ? '✓' : '–' }}</mat-hint>
+      </mat-form-field>
+      <mat-form-field>
+        <mat-label>{{ 'form.maxSlots' | t }}</mat-label>
+        <input matInput type="number" min="1" max="500" formControlName="maxSlots" />
+        @if (form.controls.maxSlots.invalid) {
+          <mat-error>{{ 'form.slotsRange' | t }}</mat-error>
+        }
+      </mat-form-field>
+      <mat-form-field>
+        <mat-label>{{ 'tpl.openBeforeDays' | t }}</mat-label>
+        <input matInput type="number" min="0" max="60" formControlName="openBeforeDays" />
+      </mat-form-field>
+      <mat-form-field>
+        <mat-label>{{ 'tpl.validFrom' | t }}</mat-label>
+        <input matInput type="date" formControlName="validFrom" />
+      </mat-form-field>
+      <mat-form-field>
+        <mat-label>{{ 'tpl.validTo' | t }}</mat-label>
+        <input matInput type="date" formControlName="validTo" />
+      </mat-form-field>
+      @if (form.hasError('toAfterFrom')) {
+        <p class="error wide" role="alert">{{ 'tpl.toAfterFrom' | t }}</p>
+      }
+
+      <div class="wide buttons">
+        <button mat-button type="button" (click)="showForm.set(false)">{{ 'app.close' | t }}</button>
+        <button mat-flat-button type="submit" [disabled]="saving()" data-testid="tpl-save">{{ 'app.create' | t }}</button>
+      </div>
+    </form>
+  </mat-card>
+}
+
+@if (state.loading()) {
+  <mat-progress-bar mode="indeterminate" [attr.aria-label]="'app.loading' | t" />
+}
+@if (state.error(); as problem) {
+  <app-load-error [problem]="problem" (retry)="load()" />
+}
+
+@if (state.data(); as templates) {
+  @if (templates.length === 0) {
+    <p class="sub">{{ 'tpl.empty' | t }}</p>
+  }
+  <div class="grid">
+    @for (t of templates; track t.id) {
+      <mat-card appearance="outlined" class="tpl" [attr.data-testid]="'tpl-' + t.id">
+        <h2>{{ t.name }}</h2>
+        <div class="chips">
+          @for (day of t.weekdays; track day) {
+            <span class="chip">{{ weekdayKey(day) | t }}</span>
+          }
+        </div>
+        <p class="num">
+          {{ t.startTime.slice(0, 5) }} – {{ t.endTime.slice(0, 5) }}
+          @if (t.overnight) {
+            · {{ 'tpl.overnight' | t }}
+          }
+          · {{ 'shifts.slots' | t: { available: t.maxSlots, max: t.maxSlots } }}
+        </p>
+        <p class="sub">{{ 'tpl.opensBefore' | t: { days: openBeforeDays(t) } }}</p>
+        <p class="sub">{{ 'tpl.range' | t: { from: day(t.validFrom), to: day(t.validTo) } }}</p>
+        <button mat-stroked-button type="button" (click)="generate(t)" [disabled]="generating() === t.id"
+                [attr.data-testid]="'generate-' + t.id">
+          <mat-icon aria-hidden="true">event_repeat</mat-icon>
+          {{ 'tpl.generate' | t }}
+        </button>
+      </mat-card>
+    }
+  </div>
+}

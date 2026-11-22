@@ -1,0 +1,38 @@
+<mat-toolbar class="bar">
+  <a class="brand" routerLink="/">
+    <mat-icon aria-hidden="true">event_available</mat-icon>
+    <span>{{ 'app.name' | t }}</span>
+  </a>
+
+  <nav class="nav" [attr.aria-label]="'nav.menu' | t">
+    @for (item of nav(); track item.path) {
+      <a mat-button [routerLink]="item.path" routerLinkActive="active" [attr.data-testid]="'nav-' + item.path">
+        <mat-icon aria-hidden="true">{{ item.icon }}</mat-icon>
+        {{ item.label | t }}
+      </a>
+    }
+  </nav>
+
+  <span class="spacer"></span>
+
+  @if (auth.user(); as user) {
+    <span class="who">
+      <span class="name">{{ user.name }}</span>
+      @for (role of user.roles; track role) {
+        <span class="role">{{ roleKey(role) | t }}</span>
+      }
+    </span>
+  }
+  <button mat-button type="button" (click)="i18n.toggle()" data-testid="lang-toggle">
+    <mat-icon aria-hidden="true">translate</mat-icon>
+    {{ 'nav.switchLanguage' | t }}
+  </button>
+  <button mat-button type="button" (click)="auth.logout()">
+    <mat-icon aria-hidden="true">logout</mat-icon>
+    {{ 'nav.logout' | t }}
+  </button>
+</mat-toolbar>
+
+<main class="content">
+  <router-outlet />
+</main>

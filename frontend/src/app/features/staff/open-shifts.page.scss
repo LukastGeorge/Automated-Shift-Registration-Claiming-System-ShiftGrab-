@@ -1,0 +1,108 @@
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sub,
+.meta,
+.empty {
+  color: var(--mat-sys-on-surface-variant);
+  margin: 0 0 8px;
+}
+
+.day h2 {
+  text-transform: capitalize;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.shift {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+}
+
+.top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.time {
+  font: var(--mat-sys-title-medium);
+  font-variant-numeric: tabular-nums;
+}
+
+.chip {
+  padding: 2px 10px;
+  border-radius: 999px;
+  font: var(--mat-sys-label-small);
+  background: var(--mat-sys-primary-container);
+  color: var(--mat-sys-on-primary-container);
+}
+
+.chip.full {
+  background: var(--mat-sys-surface-container-highest);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.name {
+  margin: 0;
+  font: var(--mat-sys-title-small);
+}
+
+.slots {
+  display: grid;
+  gap: 4px;
+}
+
+.bar {
+  height: 8px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--mat-sys-surface-container-highest);
+}
+
+.bar span {
+  display: block;
+  height: 100%;
+  background: var(--mat-sys-primary);
+  transition: width 0.3s;
+}
+
+.count {
+  font: var(--mat-sys-body-small);
+  font-variant-numeric: tabular-nums;
+}
+
+.action {
+  margin-top: auto;
+}
+
+.action button,
+.action a {
+  width: 100%;
+}
+
+.countdown {
+  font-variant-numeric: tabular-nums;
+}
+
+.mine {
+  color: var(--mat-sys-primary);
+}
+
+.more {
+  display: flex;
+  justify-content: center;
+  margin-top: 24px;
+}

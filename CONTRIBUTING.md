@@ -38,6 +38,11 @@ A story is done when:
 
 `mvn verify` needs JDK 21 and a running Docker daemon (Testcontainers starts PostgreSQL and Keycloak). It fails if JaCoCo coverage is below **70% lines / 60% branches**; the HTML report is at `backend/target/site/jacoco/index.html`. CI publishes the same numbers in the job summary and the report as the `jacoco-report` artifact.
 
+### Running the frontend quality gate locally
+
+From `frontend/` with Node.js 24: `npm ci`, `npm run lint`, `npx ng test --watch=false --coverage`, `npm run build`.
+The test step fails below **70% lines, statements and functions / 60% branches** (thresholds in `angular.json`); the HTML report is under `frontend/coverage/`. CI (`ci-frontend.yml`) runs the same steps and publishes the numbers in the job summary and the report as the `frontend-coverage` artifact.
+
 ## Versioning
 
 Semantic Versioning. Release notes are kept in `CHANGELOG.md`.
