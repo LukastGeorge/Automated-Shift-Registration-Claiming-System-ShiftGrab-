@@ -38,6 +38,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/actuator/health/**", "/actuator/info").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                        // WebSocket handshake: browsers cannot send a bearer header here; the token is checked on
+                        // the STOMP CONNECT frame instead (realtime module, SG-40).
+                        .requestMatchers("/ws", "/ws/**").permitAll()
                         // Role rules on the URL run before Spring MVC validates bodies and parameters, so the
                         // wrong role gets 403 without learning the endpoint's input rules (SG-65). The
                         // controllers' @PreAuthorize stays as a second layer.

@@ -1,4 +1,5 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
@@ -17,6 +18,7 @@ import { addDays, FormatService, fromZonedInput, toZonedInput } from '../../core
 import { I18nService, TranslatePipe } from '../../core/i18n/i18n.service';
 import { MessageKey } from '../../core/i18n/messages';
 import { NotifyService } from '../../core/notify.service';
+import { NewestWins, RealtimeService } from '../../core/realtime.service';
 import { LoadErrorComponent } from '../../shared/load-error.component';
 import { LoadState } from '../../shared/load-state';
 import { CancelShiftDialog } from './cancel-shift.dialog';
@@ -59,6 +61,30 @@ export class ShiftsAdminPage implements OnInit {
   protected readonly to = signal(addDays(this.today, 13));
   protected readonly status = signal<ShiftStatus[]>([]);
   protected readonly page = signal(0);
+
+  private readonly newestWins = new NewestWins();
+
+  constructor() {
+    // SG-40: booked counters and statuses move while the manager watches.
+    inject(RealtimeService)
+      .slotUpdates()
+      .pipe(takeUntilDestroyed())
+      .subscribe((update) => {
+        if (!this.newestWins.accept(update)) {
+          return;
+        }
+        this.state.data.update((page) =>
+          page && {
+            ...page,
+            content: page.content.map((s) =>
+              s.id === update.shiftId
+                ? { ...s, bookedSlots: update.bookedSlots, maxSlots: update.maxSlots, availableSlots: update.availableSlots, status: update.status }
+                : s,
+            ),
+          },
+        );
+      });
+  }
 
   ngOnInit(): void {
     this.load();

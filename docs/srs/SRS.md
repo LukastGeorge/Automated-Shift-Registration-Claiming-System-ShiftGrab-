@@ -123,7 +123,7 @@ Each story has acceptance criteria (AC) in Given/When/Then form. IDs `SG-xx` mat
 
 ### Epic E4 — Real-time & notifications
 
-**SG-40 — Live slot updates.** AC: Given two users viewing the same shift list, when one claims, then the other sees the remaining slots update within 1 s without reloading, regardless of which backend instance served the claim.
+**SG-40 — Live slot updates.** AC: Given two users viewing the same shift list, when one claims, then the other sees the remaining slots update within 1 s without reloading, regardless of which backend instance served the claim. *Clarified in Sprint 5:* the screen shows whether live updates are connected and reconnects on its own; a newly created shift shows a "new shifts" notice instead of appearing silently; if Redis is unreachable, live updates fall back to the users of the same instance while everything else keeps working.
 
 **SG-41 — E-mail notifications.** AC: e-mail on successful claim, on cancellation, and when a manager cancels a shift; sending failures never roll back the claim. *Clarified in Sprint 5:* e-mails are not lost either: undelivered e-mails are retried until the mail server accepts them (ADR-0007), so a staff member may exceptionally receive one twice. Each e-mail contains Vietnamese first, then English.
 

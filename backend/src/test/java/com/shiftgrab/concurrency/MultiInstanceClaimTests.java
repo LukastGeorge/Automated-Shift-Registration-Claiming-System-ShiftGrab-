@@ -135,6 +135,7 @@ class MultiInstanceClaimTests {
                         "--spring.datasource.hikari.maximum-pool-size=20",
                         // This suite is about claims; e-mails and scheduled jobs are covered elsewhere.
                         "--shiftgrab.notification.enabled=false",
+                        "--shiftgrab.realtime.enabled=false",
                         "--shiftgrab.scheduling.enabled=false");
     }
 
