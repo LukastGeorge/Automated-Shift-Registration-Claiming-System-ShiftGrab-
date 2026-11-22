@@ -14,12 +14,14 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.TestPropertySource;
 
 import com.shiftgrab.ApiTestSupport;
 import com.shiftgrab.MailpitContainer;
 import com.shiftgrab.MailpitContainer.Mail;
 
 /** SG-41 against a real SMTP server (Mailpit): e-mails are sent after commit, never for a refused action. */
+@TestPropertySource(properties = "shiftgrab.notification.enabled=true")
 class NotificationApiTests extends ApiTestSupport {
 
     private static final String STAFF_MAIL = STAFF_SUB + "@shiftgrab.test";

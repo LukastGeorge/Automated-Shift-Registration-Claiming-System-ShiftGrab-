@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mail.MailSendException;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 
 import com.shiftgrab.ApiTestSupport;
@@ -25,6 +26,7 @@ import com.shiftgrab.shared.scheduling.EventPublicationMaintenance;
  * SG-41 AC "sending failures never roll back the claim", and the e-mail is not lost either: the event publication
  * registry (transactional outbox) keeps the failed delivery and the maintenance job resubmits it.
  */
+@TestPropertySource(properties = "shiftgrab.notification.enabled=true")
 class NotificationOutboxTests extends ApiTestSupport {
 
     @MockitoSpyBean

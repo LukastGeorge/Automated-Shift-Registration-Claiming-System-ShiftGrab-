@@ -12,6 +12,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.event.ApplicationEvents;
 import org.springframework.test.context.event.RecordApplicationEvents;
 import org.springframework.test.web.servlet.MockMvc;
@@ -26,6 +27,10 @@ import com.shiftgrab.shared.security.KeycloakRealmRoleConverter;
 @AutoConfigureMockMvc
 @Import(TestcontainersConfiguration.class)
 @RecordApplicationEvents
+// E-mails are sent asynchronously after commit. A listener still running from the previous test would race with
+// the TRUNCATE below (deadlock seen in CI), so they are off here and on only in the notification tests, which
+// wait for every e-mail before finishing.
+@TestPropertySource(properties = "shiftgrab.notification.enabled=false")
 public abstract class ApiTestSupport {
 
     protected static final String MANAGER_SUB = "manager-1";
