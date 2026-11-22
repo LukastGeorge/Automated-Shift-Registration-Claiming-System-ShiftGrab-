@@ -27,10 +27,10 @@ import com.shiftgrab.shared.security.KeycloakRealmRoleConverter;
 @AutoConfigureMockMvc
 @Import(TestcontainersConfiguration.class)
 @RecordApplicationEvents
-// E-mails are sent asynchronously after commit. A listener still running from the previous test would race with
-// the TRUNCATE below (deadlock seen in CI), so they are off here and on only in the notification tests, which
-// wait for every e-mail before finishing.
-@TestPropertySource(properties = "shiftgrab.notification.enabled=false")
+// E-mails and live updates run asynchronously after commit. A listener still running from the previous test would
+// race with the TRUNCATE below (deadlock seen in CI), so they are off here and on only in the tests about them,
+// which wait for their listeners before finishing.
+@TestPropertySource(properties = { "shiftgrab.notification.enabled=false", "shiftgrab.realtime.enabled=false" })
 public abstract class ApiTestSupport {
 
     protected static final String MANAGER_SUB = "manager-1";

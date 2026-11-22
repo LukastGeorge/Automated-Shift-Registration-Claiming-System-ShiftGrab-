@@ -54,6 +54,9 @@ export const vi = {
   'shifts.full': 'Đã đầy',
   'shifts.mine': 'Bạn đã giành',
   'shifts.claimed': 'Đã giành ca "{name}".',
+  'shifts.newAvailable': 'Có ca mới vừa được tạo.',
+  'live.on': 'Trực tiếp',
+  'live.off': 'Mất kết nối trực tiếp, đang thử lại…',
 
   'my.title': 'Ca của tôi',
   'my.week': 'Tuần này ({from} – {to})',
@@ -245,6 +248,9 @@ export const en: Record<MessageKey, string> = {
   'shifts.full': 'Full',
   'shifts.mine': 'You hold this shift',
   'shifts.claimed': 'You claimed "{name}".',
+  'shifts.newAvailable': 'New shifts were just added.',
+  'live.on': 'Live',
+  'live.off': 'Live updates lost, reconnecting…',
 
   'my.title': 'My shifts',
   'my.week': 'This week ({from} – {to})',
