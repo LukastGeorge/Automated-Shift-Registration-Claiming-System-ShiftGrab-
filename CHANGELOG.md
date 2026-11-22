@@ -4,6 +4,21 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [0.5.0] - 2026-11-22 — Sprint 5: Real-time, notifications and audit
+
+### Added
+- Live slot updates: STOMP over WebSocket, token checked on CONNECT, read-only channel; Redis pub/sub fans updates out across backend instances; newest update per shift wins (database clock); live indicator and "new shifts" notice in the web app ([#27](../../issues/27), [#100](../../pull/100)).
+- E-mail notifications (Vietnamese and English) after a claim, a cancellation and a shift cancelled by the manager, through a transactional outbox (Spring Modulith event publication registry): a mail outage never rolls back a claim and no e-mail is lost ([ADR-0007](docs/adr/0007-transactional-outbox-for-side-effects.md), [#28](../../issues/28), [#98](../../pull/98)).
+- Opening reminders 30 minutes before registration opens, opt-in from the profile page, one digest per person, sent exactly once across instances (ShedLock + database marker + outbox) ([#29](../../issues/29), [#99](../../pull/99)).
+- Append-only audit log of every business change, written in the same transaction, with `GET /api/v1/audit-log` filters ([#30](../../issues/30), [#96](../../pull/96)).
+- Scheduled jobs with ShedLock; resubmission of failed event publications.
+
+### Changed
+- Dependabot: TypeScript moves only with Angular; npm dependency updates ([#92](../../pull/92)–[#94](../../pull/94), [#97](../../pull/97)).
+
+### Fixed
+- `backend/mvnw.cmd` stored with CRLF in the index showed as modified on every Windows checkout ([#97](../../pull/97)).
+
 ## [0.4.0] - 2026-11-22 — Sprint 4: Web app
 
 ### Added
