@@ -38,13 +38,17 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/actuator/health/**", "/actuator/info").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                        // WebSocket handshake: browsers cannot send a bearer header here; the token is checked on
+                        // the STOMP CONNECT frame instead (realtime module, SG-40).
+                        .requestMatchers("/ws", "/ws/**").permitAll()
                         // Role rules on the URL run before Spring MVC validates bodies and parameters, so the
                         // wrong role gets 403 without learning the endpoint's input rules (SG-65). The
                         // controllers' @PreAuthorize stays as a second layer.
                         .requestMatchers(HttpMethod.POST, "/api/v1/shifts").hasRole("MANAGER")
                         .requestMatchers(HttpMethod.PATCH, "/api/v1/shifts/*").hasRole("MANAGER")
                         .requestMatchers(HttpMethod.POST, "/api/v1/shifts/*/cancel").hasRole("MANAGER")
-                        .requestMatchers("/api/v1/shift-templates/**", "/api/v1/users/**").hasRole("MANAGER")
+                        .requestMatchers("/api/v1/shift-templates/**", "/api/v1/users/**", "/api/v1/audit-log/**")
+                        .hasRole("MANAGER")
                         .requestMatchers(HttpMethod.POST, "/api/v1/shifts/*/registrations").hasRole("STAFF")
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/registrations/*").hasRole("STAFF")
                         .requestMatchers("/api/**").authenticated()

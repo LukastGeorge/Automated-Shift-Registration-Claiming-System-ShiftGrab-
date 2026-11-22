@@ -123,17 +123,17 @@ Mỗi story có tiêu chí nghiệm thu (AC) dạng Given/When/Then. Mã `SG-xx`
 
 ### Epic E4: Real-time & thông báo
 
-**SG-40: Cập nhật suất trực tiếp.** AC: Hai người cùng xem danh sách ca, khi một người giành thì người kia thấy số suất còn lại thay đổi trong vòng 1 giây mà không cần tải lại, bất kể instance backend nào xử lý request.
+**SG-40: Cập nhật suất trực tiếp.** AC: Hai người cùng xem danh sách ca, khi một người giành thì người kia thấy số suất còn lại thay đổi trong vòng 1 giây mà không cần tải lại, bất kể instance backend nào xử lý request. *Làm rõ ở Sprint 5:* màn hình cho biết đang có kết nối trực tiếp hay không và tự kết nối lại. Khi có ca mới được tạo, màn hình hiện thông báo "có ca mới" thay vì tự chèn ca vào danh sách. Nếu Redis không truy cập được, chỉ những người đang nối cùng instance mới nhận được cập nhật trực tiếp, còn mọi chức năng khác vẫn chạy bình thường.
 
-**SG-41: Thông báo email.** AC: gửi email khi giành ca thành công, khi hủy, khi quản lý hủy ca; lỗi gửi email không làm rollback việc giành ca.
+**SG-41: Thông báo email.** AC: gửi email khi giành ca thành công, khi hủy, khi quản lý hủy ca; lỗi gửi email không làm rollback việc giành ca. *Làm rõ ở Sprint 5:* email cũng không bị mất. Email chưa gửi được sẽ được gửi lại cho tới khi mail server nhận (ADR-0007), nên trong trường hợp hiếm một người có thể nhận trùng email. Mỗi email có tiếng Việt trước, tiếng Anh sau.
 
-**SG-42: Nhắc giờ mở đăng ký.** AC: nhân viên bật nhận nhắc sẽ nhận email 30 phút trước khi ca mở; với 2 instance thì mỗi nhắc nhở chỉ gửi đúng một lần.
+**SG-42: Nhắc giờ mở đăng ký.** AC: nhân viên bật nhận nhắc sẽ nhận email 30 phút trước khi ca mở; với 2 instance thì mỗi nhắc nhở chỉ gửi đúng một lần. *Làm rõ ở Sprint 5:* nhân viên bật hoặc tắt nhắc nhở trên trang hồ sơ. Mỗi người nhận một email liệt kê tất cả các ca sắp mở trong 30 phút tới. Mỗi ca chỉ được nhắc một lần (có dấu đánh dấu trong database), và những ca đã bị hủy hoặc đã đầy trong lúc chờ sẽ không được nhắc.
 
 ### Epic E5: Báo cáo & audit
 
 **SG-50: Báo cáo giờ công & lương.** AC: theo khoảng ngày, với mỗi nhân viên: số ca, tổng giờ, tổng tiền (BR-10); có dòng tổng.
 **SG-51: Xuất file.** AC: tải báo cáo dạng CSV và XLSX.
-**SG-52: Audit log.** AC: mọi thao tác tạo/sửa/hủy/giành đều ghi người thực hiện, hành động, đối tượng, thời điểm, tóm tắt trước/sau; quản lý lọc được theo người, hành động, ngày.
+**SG-52: Audit log.** AC: mọi thao tác tạo/sửa/hủy/giành đều ghi người thực hiện, hành động, đối tượng, thời điểm, tóm tắt trước/sau; quản lý lọc được theo người, hành động, ngày. *Làm rõ ở Sprint 5:* mỗi dòng audit được ghi trong cùng transaction với thay đổi mà nó ghi nhận, nên không có thay đổi nào thiếu dòng audit, và thay đổi bị rollback thì cũng không để lại dòng nào. Audit log chỉ được thêm, không được sửa hay xóa, và điều này được đảm bảo bằng trigger trong database (NFR-10). Ngoài ra còn ghi lại: tạo mẫu ca, sinh ca, đổi đơn giá, và các bản đăng ký bị hủy theo ca (kèm danh sách nhân viên bị ảnh hưởng).
 
 ## 5. Yêu cầu phi chức năng
 

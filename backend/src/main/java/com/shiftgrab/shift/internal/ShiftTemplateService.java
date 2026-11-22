@@ -22,6 +22,7 @@ import com.shiftgrab.identity.CurrentUserService;
 import com.shiftgrab.shared.error.BusinessException;
 import com.shiftgrab.shared.error.ErrorCode;
 import com.shiftgrab.shared.error.ValidationErrors;
+import com.shiftgrab.shift.ShiftTemplateCreated;
 import com.shiftgrab.shift.ShiftsGenerated;
 import com.shiftgrab.shift.internal.ShiftTemplate.Occurrence;
 
@@ -65,8 +66,11 @@ public class ShiftTemplateService {
 
         TreeSet<DayOfWeek> days = new TreeSet<>();
         weekdays.forEach(d -> days.add(DayOfWeek.of(d)));
-        return templates.insert(new ShiftTemplate(0, name.strip(), days, startTime, endTime, maxSlots, openBefore,
-                validFrom, validTo), currentUser.currentUser().id());
+        long actorId = currentUser.currentUser().id();
+        ShiftTemplate template = templates.insert(new ShiftTemplate(0, name.strip(), days, startTime, endTime,
+                maxSlots, openBefore, validFrom, validTo), actorId);
+        events.publishEvent(new ShiftTemplateCreated(template.id(), actorId, template.name()));
+        return template;
     }
 
     @Transactional(readOnly = true)

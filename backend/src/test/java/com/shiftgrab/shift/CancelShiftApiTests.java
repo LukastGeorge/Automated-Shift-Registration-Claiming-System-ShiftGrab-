@@ -43,8 +43,9 @@ class CancelShiftApiTests extends ApiTestSupport {
                 "SELECT count(*) FROM shift_registrations WHERE cancelled_at IS NULL", Integer.class)).isZero();
         assertThat(events.stream(ShiftCancelled.class)).singleElement()
                 .satisfies(e -> assertThat(e.reason()).isEqualTo("Store closed"));
+        long managerId = jdbc.queryForObject("SELECT id FROM users WHERE keycloak_sub = ?", Long.class, MANAGER_SUB);
         assertThat(events.stream(ShiftRegistrationsCancelled.class))
-                .containsExactly(new ShiftRegistrationsCancelled(shiftId, List.of(an, binh), "Store closed"));
+                .containsExactly(new ShiftRegistrationsCancelled(shiftId, managerId, List.of(an, binh), "Store closed"));
     }
 
     @Test
@@ -54,8 +55,9 @@ class CancelShiftApiTests extends ApiTestSupport {
 
         mvc.perform(post("/api/v1/shifts/{id}/cancel", shiftId).with(manager())).andExpect(status().isOk());
 
+        long managerId = jdbc.queryForObject("SELECT id FROM users WHERE keycloak_sub = ?", Long.class, MANAGER_SUB);
         assertThat(events.stream(ShiftRegistrationsCancelled.class))
-                .containsExactly(new ShiftRegistrationsCancelled(shiftId, List.of(), null));
+                .containsExactly(new ShiftRegistrationsCancelled(shiftId, managerId, List.of(), null));
     }
 
     @Test

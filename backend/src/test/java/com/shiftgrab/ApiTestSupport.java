@@ -12,6 +12,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.event.ApplicationEvents;
 import org.springframework.test.context.event.RecordApplicationEvents;
 import org.springframework.test.web.servlet.MockMvc;
@@ -26,6 +27,10 @@ import com.shiftgrab.shared.security.KeycloakRealmRoleConverter;
 @AutoConfigureMockMvc
 @Import(TestcontainersConfiguration.class)
 @RecordApplicationEvents
+// E-mails and live updates run asynchronously after commit. A listener still running from the previous test would
+// race with the TRUNCATE below (deadlock seen in CI), so they are off here and on only in the tests about them,
+// which wait for their listeners before finishing.
+@TestPropertySource(properties = { "shiftgrab.notification.enabled=false", "shiftgrab.realtime.enabled=false" })
 public abstract class ApiTestSupport {
 
     protected static final String MANAGER_SUB = "manager-1";
@@ -45,7 +50,8 @@ public abstract class ApiTestSupport {
 
     @BeforeEach
     void cleanDatabase() {
-        jdbc.execute("TRUNCATE shift_registrations, shifts, shift_templates, audit_log, users RESTART IDENTITY CASCADE");
+        jdbc.execute("TRUNCATE shift_registrations, shifts, shift_templates, audit_log, users, event_publication "
+                + "RESTART IDENTITY CASCADE");
     }
 
     protected JwtRequestPostProcessor manager() {
@@ -70,6 +76,13 @@ public abstract class ApiTestSupport {
                 INSERT INTO users (keycloak_sub, full_name, email, role) VALUES (?, ?, ?, ?)
                 ON CONFLICT (keycloak_sub) DO UPDATE SET role = EXCLUDED.role RETURNING id
                 """, Long.class, sub, sub, sub + "@shiftgrab.test", role);
+    }
+
+    /** A shift whose registration is open right now (opened yesterday), so staff can claim it. */
+    protected long insertOpenShift(String name, String startAt, String endAt, int maxSlots) {
+        long id = insertShift(name, startAt, endAt, maxSlots, 0, "OPEN");
+        jdbc.update("UPDATE shifts SET registration_open_at = now() - interval '1 day' WHERE id = ?", id);
+        return id;
     }
 
     /** Inserts a shift bypassing the API, e.g. one in the past that the API would refuse to create. */

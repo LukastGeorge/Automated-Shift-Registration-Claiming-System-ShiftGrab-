@@ -13,7 +13,7 @@
 
     <groupId>com.shiftgrab</groupId>
     <artifactId>shiftgrab-backend</artifactId>
-    <version>0.4.0</version>
+    <version>0.5.0</version>
     <name>ShiftGrab Backend</name>
     <description>Shift registration and claiming system — modular monolith</description>
 
@@ -24,6 +24,7 @@
         <testcontainers-keycloak.version>4.4.0</testcontainers-keycloak.version>
         <jacoco.version>0.8.16</jacoco.version>
         <redisson.version>4.8.0</redisson.version>
+        <shedlock.version>7.11.0</shedlock.version>
         <!-- Quality gate (project plan: coverage >= 70%) -->
         <jacoco.line.minimum>0.70</jacoco.line.minimum>
         <jacoco.branch.minimum>0.60</jacoco.branch.minimum>
@@ -94,6 +95,34 @@
             <groupId>org.springframework.modulith</groupId>
             <artifactId>spring-modulith-starter-core</artifactId>
         </dependency>
+        <!-- Event publication registry (transactional outbox) for after-commit listeners (SG-41) -->
+        <dependency>
+            <groupId>org.springframework.modulith</groupId>
+            <artifactId>spring-modulith-starter-jdbc</artifactId>
+        </dependency>
+
+        <!-- Live slot updates over STOMP/WebSocket (SG-40) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-websocket</artifactId>
+        </dependency>
+
+        <!-- Notifications (SG-41, SG-42) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
+        </dependency>
+        <!-- Scheduled jobs run on one instance only (SG-42) -->
+        <dependency>
+            <groupId>net.javacrumbs.shedlock</groupId>
+            <artifactId>shedlock-spring</artifactId>
+            <version>${shedlock.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>net.javacrumbs.shedlock</groupId>
+            <artifactId>shedlock-provider-jdbc-template</artifactId>
+            <version>${shedlock.version}</version>
+        </dependency>
 
         <!-- Operations -->
         <dependency>
@@ -135,6 +164,11 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.awaitility</groupId>
+            <artifactId>awaitility</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>

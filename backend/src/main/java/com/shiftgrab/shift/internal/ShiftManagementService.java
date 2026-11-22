@@ -93,7 +93,7 @@ public class ShiftManagementService {
         }
 
         Shift updated = shifts.update(edited, expectedVersion, timesChanged).orElseThrow(this::concurrentModification);
-        events.publishEvent(new ShiftChanged(id, currentUser.currentUser().id(), timesChanged));
+        events.publishEvent(new ShiftChanged(id, currentUser.currentUser().id(), timesChanged, current, updated));
         return updated;
     }
 

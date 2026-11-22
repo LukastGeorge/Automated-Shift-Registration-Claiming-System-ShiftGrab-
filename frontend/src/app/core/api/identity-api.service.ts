@@ -14,4 +14,9 @@ export class IdentityApi {
   me(): Observable<Me> {
     return this.http.get<Me>(`${this.base}/me`);
   }
+
+  /** SG-42: e-mail me 30 minutes before shifts open for registration. */
+  setReminderOptIn(reminderOptIn: boolean): Observable<Me> {
+    return this.http.put<Me>(`${this.base}/me/preferences`, { reminderOptIn });
+  }
 }

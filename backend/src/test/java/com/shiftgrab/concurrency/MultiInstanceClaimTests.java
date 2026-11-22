@@ -132,7 +132,11 @@ class MultiInstanceClaimTests {
                         "--shiftgrab.lock.redis-address=redis://" + redis.getHost() + ":" + redis.getMappedPort(6379),
                         // AC7 asserts SHIFT_FULL for every loser, so nobody may give up waiting for the lock here
                         "--shiftgrab.lock.wait-time=20s",
-                        "--spring.datasource.hikari.maximum-pool-size=20");
+                        "--spring.datasource.hikari.maximum-pool-size=20",
+                        // This suite is about claims; e-mails and scheduled jobs are covered elsewhere.
+                        "--shiftgrab.notification.enabled=false",
+                        "--shiftgrab.realtime.enabled=false",
+                        "--shiftgrab.scheduling.enabled=false");
     }
 
     private static String baseUrl(ConfigurableApplicationContext context) {

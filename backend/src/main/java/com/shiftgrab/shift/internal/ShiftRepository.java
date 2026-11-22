@@ -48,6 +48,18 @@ public class ShiftRepository {
                 .single();
     }
 
+    public List<Shift> findOpeningBetween(Instant after, Instant until) {
+        return jdbc.sql("SELECT " + COLUMNS + """
+                 FROM shifts
+                WHERE status = 'OPEN' AND registration_open_at > :after AND registration_open_at <= :until
+                ORDER BY registration_open_at, id
+                """)
+                .param("after", after.atOffset(ZoneOffset.UTC))
+                .param("until", until.atOffset(ZoneOffset.UTC))
+                .query(ShiftRepository::map)
+                .list();
+    }
+
     public Optional<Shift> findById(long id) {
         return jdbc.sql("SELECT " + COLUMNS + " FROM shifts WHERE id = :id")
                 .param("id", id)

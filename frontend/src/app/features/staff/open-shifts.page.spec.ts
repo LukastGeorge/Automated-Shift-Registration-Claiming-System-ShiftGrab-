@@ -6,7 +6,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideRouter } from '@angular/router';
 
 import { myShift, myShifts, page, shift } from '../../../testing/fixtures';
-import { testProviders } from '../../../testing/test-support';
+import { FakeStomp, fakeKeycloak, testProviders } from '../../../testing/test-support';
 import { ClockService } from '../../core/clock.service';
 import { claimState, OpenShiftsPage } from './open-shifts.page';
 
@@ -29,13 +29,16 @@ describe('OpenShiftsPage', () => {
   const now = signal(Date.parse('2030-01-01T00:00:00Z'));
   let snack: ReturnType<typeof vi.fn>;
 
+  let stomp: FakeStomp;
+
   async function render(shifts = [shift(), shift({ id: 2, name: 'Evening', startAt: '2030-01-08T11:00:00Z', endAt: '2030-01-08T15:00:00Z' })], mine = [myShift({ shiftId: 99 })]) {
     localStorage.clear();
     snack = vi.fn();
+    stomp = new FakeStomp();
     TestBed.configureTestingModule({
       imports: [OpenShiftsPage],
       providers: [
-        ...testProviders(),
+        ...testProviders(fakeKeycloak(), stomp),
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),
@@ -57,6 +60,56 @@ describe('OpenShiftsPage', () => {
   function claimRequest(http: HttpTestingController, id: number): TestRequest {
     return http.expectOne({ method: 'POST', url: `http://api.test/api/v1/shifts/${id}/registrations` });
   }
+
+  describe('live updates (SG-40)', () => {
+    const live = (shiftId: number, bookedSlots: number, observedAt: string, status: 'OPEN' | 'FULL' = 'OPEN') => ({
+      shiftId,
+      bookedSlots,
+      maxSlots: 5,
+      availableSlots: 5 - bookedSlots,
+      status,
+      observedAt,
+    });
+
+    it("moves a card's counter when someone else claims, and shows the connection state", async () => {
+      const { fixture, el } = await render();
+      await new Promise((resolve) => setTimeout(resolve));
+      await fixture.whenStable();
+      expect(el.querySelector('[data-testid="live"]')?.textContent).toContain('Trực tiếp');
+
+      stomp.emit(live(1, 4, '2030-01-01T00:00:01Z'));
+      await fixture.whenStable();
+      expect(el.querySelector('[data-testid="shift-1"]')?.textContent).toContain('Còn 1/5 suất');
+
+      stomp.emit(live(1, 5, '2030-01-01T00:00:02Z', 'FULL'));
+      await fixture.whenStable();
+      expect(el.querySelector('[data-testid="shift-1"]')?.textContent).toContain('Đã đầy');
+    });
+
+    it('ignores an update that arrives after a newer one', async () => {
+      const { fixture, el } = await render();
+      stomp.emit(live(1, 4, '2030-01-01T00:00:02Z'));
+      stomp.emit(live(1, 2, '2030-01-01T00:00:01Z'));
+      await fixture.whenStable();
+      expect(el.querySelector('[data-testid="shift-1"]')?.textContent).toContain('Còn 1/5 suất');
+    });
+
+    it('offers a reload when a new shift appears', async () => {
+      const { fixture, el } = await render();
+      expect(el.querySelector('[data-testid="new-shifts"]')).toBeNull();
+      stomp.emit(live(42, 0, '2030-01-01T00:00:01Z'));
+      await fixture.whenStable();
+      expect(el.querySelector('[data-testid="new-shifts"]')?.textContent).toContain('Có ca mới');
+    });
+
+    it('says so when the live connection drops', async () => {
+      const { fixture, el } = await render();
+      await new Promise((resolve) => setTimeout(resolve));
+      stomp.drop();
+      await fixture.whenStable();
+      expect(el.querySelector('[data-testid="live"]')?.textContent).toContain('Mất kết nối');
+    });
+  });
 
   it('groups shifts by day in the organisation time zone', async () => {
     const { el } = await render();

@@ -123,17 +123,17 @@ Each story has acceptance criteria (AC) in Given/When/Then form. IDs `SG-xx` mat
 
 ### Epic E4 — Real-time & notifications
 
-**SG-40 — Live slot updates.** AC: Given two users viewing the same shift list, when one claims, then the other sees the remaining slots update within 1 s without reloading, regardless of which backend instance served the claim.
+**SG-40 — Live slot updates.** AC: Given two users viewing the same shift list, when one claims, then the other sees the remaining slots update within 1 s without reloading, regardless of which backend instance served the claim. *Clarified in Sprint 5:* the screen shows whether live updates are connected and reconnects on its own; a newly created shift shows a "new shifts" notice instead of appearing silently; if Redis is unreachable, live updates fall back to the users of the same instance while everything else keeps working.
 
-**SG-41 — E-mail notifications.** AC: e-mail on successful claim, on cancellation, and when a manager cancels a shift; sending failures never roll back the claim.
+**SG-41 — E-mail notifications.** AC: e-mail on successful claim, on cancellation, and when a manager cancels a shift; sending failures never roll back the claim. *Clarified in Sprint 5:* e-mails are not lost either: undelivered e-mails are retried until the mail server accepts them (ADR-0007), so a staff member may exceptionally receive one twice. Each e-mail contains Vietnamese first, then English.
 
-**SG-42 — Opening reminder.** AC: staff who opted in receive an e-mail 30 min before a shift opens; with 2 instances each reminder is sent exactly once.
+**SG-42 — Opening reminder.** AC: staff who opted in receive an e-mail 30 min before a shift opens; with 2 instances each reminder is sent exactly once. *Clarified in Sprint 5:* staff switch the reminder on or off on their profile page; one e-mail per person lists every shift opening within 30 minutes; a shift is reminded once (database marker), and shifts cancelled or filled in the meantime are left out.
 
 ### Epic E5 — Reporting & audit
 
 **SG-50 — Hours & pay report.** AC: for a date range, per staff member: number of shifts, total hours, total pay (BR-10); totals row.
 **SG-51 — Export.** AC: download the report as CSV and XLSX.
-**SG-52 — Audit log.** AC: every create/edit/cancel/claim records actor, action, target, timestamp, before/after summary; managers can filter by actor, action and date.
+**SG-52 — Audit log.** AC: every create/edit/cancel/claim records actor, action, target, timestamp, before/after summary; managers can filter by actor, action and date. *Clarified in Sprint 5:* each entry is written in the same transaction as the change it records, so a change never exists without its entry and a rolled-back change leaves none. The log is append-only, enforced by a database trigger (NFR-10). Also recorded: template creation, shift generation, hourly-rate changes, and the registrations cancelled together with a shift (with the affected staff).
 
 ## 5. Non-functional requirements
 

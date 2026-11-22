@@ -50,4 +50,10 @@ public class UserDirectoryService {
                 after.hourlyRate()));
         return after;
     }
+
+    /** The caller's own preference: e-mail me before shifts open (SG-42). A personal setting, so not audited. */
+    @Transactional
+    public UserAccount setReminderOptIn(boolean optIn) {
+        return users.updateReminderOptIn(currentUser.currentUser().id(), optIn);
+    }
 }

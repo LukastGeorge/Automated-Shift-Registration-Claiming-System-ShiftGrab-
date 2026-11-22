@@ -59,6 +59,27 @@ public class UserAccountRepository {
                 .single();
     }
 
+    public Optional<UserAccount> findById(long id) {
+        return jdbc.sql("SELECT " + COLUMNS + " FROM users WHERE id = :id")
+                .param("id", id)
+                .query(UserAccountRepository::map)
+                .optional();
+    }
+
+    public List<UserAccount> findStaffWithReminders() {
+        return jdbc.sql("SELECT " + COLUMNS + " FROM users WHERE role = 'STAFF' AND reminder_opt_in ORDER BY id")
+                .query(UserAccountRepository::map)
+                .list();
+    }
+
+    public UserAccount updateReminderOptIn(long id, boolean optIn) {
+        return jdbc.sql("UPDATE users SET reminder_opt_in = :optIn WHERE id = :id RETURNING " + COLUMNS)
+                .param("id", id)
+                .param("optIn", optIn)
+                .query(UserAccountRepository::map)
+                .single();
+    }
+
     /** Locks the row so that two managers changing the same rate are serialised and the old value is exact. */
     public Optional<UserAccount> findByIdForUpdate(long id) {
         return jdbc.sql("SELECT " + COLUMNS + " FROM users WHERE id = :id FOR UPDATE")

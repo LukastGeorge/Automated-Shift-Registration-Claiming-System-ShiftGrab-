@@ -1,4 +1,5 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -11,6 +12,7 @@ import { MyShifts, Page, Shift, ShiftStatus } from '../../core/api/models';
 import { RegistrationApi } from '../../core/api/registration-api.service';
 import { ShiftApi } from '../../core/api/shift-api.service';
 import { ClockService } from '../../core/clock.service';
+import { NewestWins, RealtimeService, SlotUpdate } from '../../core/realtime.service';
 import { FormatService } from '../../core/format.service';
 import { TranslatePipe } from '../../core/i18n/i18n.service';
 import { MessageKey } from '../../core/i18n/messages';
@@ -66,6 +68,18 @@ export class OpenShiftsPage implements OnInit {
   private readonly notify = inject(NotifyService);
   protected readonly fmt = inject(FormatService);
   protected readonly clock = inject(ClockService);
+  protected readonly live = inject(RealtimeService);
+  private readonly newestWins = new NewestWins();
+  /** A live update named a shift this list does not show yet (e.g. just created): offer a reload. */
+  protected readonly newShifts = signal(false);
+
+  constructor() {
+    // SG-40: other people's claims and cancellations move the slot counters without a reload.
+    this.live
+      .slotUpdates()
+      .pipe(takeUntilDestroyed())
+      .subscribe((update) => this.applyLive(update));
+  }
 
   protected readonly state = new LoadState<[Page<Shift>, MyShifts]>();
   private readonly shifts = signal<Shift[]>([]);
@@ -94,7 +108,27 @@ export class OpenShiftsPage implements OnInit {
     this.load();
   }
 
+  private applyLive(update: SlotUpdate): void {
+    if (!this.newestWins.accept(update)) {
+      return; // an older update overtaken by a newer one
+    }
+    if (!this.shifts().some((s) => s.id === update.shiftId)) {
+      if (update.status === 'OPEN') {
+        this.newShifts.set(true);
+      }
+      return;
+    }
+    this.patch(update.shiftId, (s) => ({
+      ...s,
+      bookedSlots: update.bookedSlots,
+      maxSlots: update.maxSlots,
+      availableSlots: update.availableSlots,
+      status: update.status,
+    }));
+  }
+
   load(): void {
+    this.newShifts.set(false);
     this.state.run(
       forkJoin([
         this.shiftApi.search({ page: 0, size: PAGE_SIZE }),

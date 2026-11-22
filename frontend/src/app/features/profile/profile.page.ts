@@ -1,19 +1,21 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, signal } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 
 import { IdentityApi } from '../../core/api/identity-api.service';
 import { Me, Role } from '../../core/api/models';
 import { FormatService } from '../../core/format.service';
 import { TranslatePipe } from '../../core/i18n/i18n.service';
 import { MessageKey } from '../../core/i18n/messages';
+import { NotifyService } from '../../core/notify.service';
 import { LoadErrorComponent } from '../../shared/load-error.component';
 import { LoadState } from '../../shared/load-state';
 
 /** Shows the profile stored by the backend; the first visit also proves login → token → API works end to end. */
 @Component({
   selector: 'app-profile-page',
-  imports: [MatCardModule, MatProgressBarModule, TranslatePipe, LoadErrorComponent],
+  imports: [MatCardModule, MatProgressBarModule, MatSlideToggleModule, TranslatePipe, LoadErrorComponent],
   template: `
     <h1>{{ 'profile.title' | t }}</h1>
     @if (state.loading()) {
@@ -36,6 +38,16 @@ import { LoadState } from '../../shared/load-state';
             <dd>{{ 'profile.perHour' | t: { amount: fmt.money(me.hourlyRate) } }}</dd>
           </dl>
           <p class="hint">{{ 'profile.managedByKeycloak' | t }}</p>
+          @if (me.role === 'STAFF') {
+            <mat-slide-toggle
+              [checked]="me.reminderOptIn"
+              [disabled]="saving()"
+              (change)="setReminder($event.checked)"
+              data-testid="reminder-toggle"
+            >
+              {{ 'profile.reminder' | t }}
+            </mat-slide-toggle>
+          }
         </mat-card-content>
       </mat-card>
     }
@@ -50,8 +62,10 @@ import { LoadState } from '../../shared/load-state';
 })
 export class ProfilePage implements OnInit {
   private readonly api = inject(IdentityApi);
+  private readonly notify = inject(NotifyService);
   protected readonly fmt = inject(FormatService);
   protected readonly state = new LoadState<Me>();
+  protected readonly saving = signal(false);
 
   ngOnInit(): void {
     this.load();
@@ -59,6 +73,22 @@ export class ProfilePage implements OnInit {
 
   load(): void {
     this.state.run(this.api.me());
+  }
+
+  protected setReminder(optIn: boolean): void {
+    this.saving.set(true);
+    this.api.setReminderOptIn(optIn).subscribe({
+      next: (me) => {
+        this.saving.set(false);
+        this.state.data.set(me);
+        this.notify.success(me.reminderOptIn ? 'profile.reminderOn' : 'profile.reminderOff');
+      },
+      error: (err: unknown) => {
+        this.saving.set(false);
+        this.notify.error(err);
+        this.load(); // show the value the server actually has
+      },
+    });
   }
 
   protected roleKey(role: Role): MessageKey {

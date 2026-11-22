@@ -28,6 +28,11 @@ updates:
         patterns: ["eslint", "@eslint/*", "typescript-eslint"]
       test:
         patterns: ["vitest", "@vitest/*", "jsdom"]
+    ignore:
+      # The Angular compiler accepts only one TypeScript minor line (peer dependency, e.g. ">=6.0 <6.1"),
+      # so TypeScript is upgraded together with Angular via `ng update`, never on its own.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
 
   - package-ecosystem: github-actions
     directory: /

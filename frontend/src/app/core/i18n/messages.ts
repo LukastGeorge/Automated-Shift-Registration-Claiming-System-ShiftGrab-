@@ -27,6 +27,9 @@ export const vi = {
   'profile.hourlyRate': 'Đơn giá',
   'profile.perHour': '{amount}/giờ',
   'profile.managedByKeycloak': 'Tên, email và vai trò được quản lý trong Keycloak.',
+  'profile.reminder': 'Nhắc tôi qua email 30 phút trước khi ca mở đăng ký',
+  'profile.reminderOn': 'Đã bật nhắc nhở qua email.',
+  'profile.reminderOff': 'Đã tắt nhắc nhở qua email.',
 
   'nav.openShifts': 'Ca còn trống',
   'nav.myShifts': 'Ca của tôi',
@@ -51,6 +54,9 @@ export const vi = {
   'shifts.full': 'Đã đầy',
   'shifts.mine': 'Bạn đã giành',
   'shifts.claimed': 'Đã giành ca "{name}".',
+  'shifts.newAvailable': 'Có ca mới vừa được tạo.',
+  'live.on': 'Trực tiếp',
+  'live.off': 'Mất kết nối trực tiếp, đang thử lại…',
 
   'my.title': 'Ca của tôi',
   'my.week': 'Tuần này ({from} – {to})',
@@ -215,6 +221,9 @@ export const en: Record<MessageKey, string> = {
   'profile.hourlyRate': 'Hourly rate',
   'profile.perHour': '{amount}/hour',
   'profile.managedByKeycloak': 'Name, email and role are managed in Keycloak.',
+  'profile.reminder': 'E-mail me 30 minutes before shifts open for registration',
+  'profile.reminderOn': 'E-mail reminders turned on.',
+  'profile.reminderOff': 'E-mail reminders turned off.',
 
   'nav.openShifts': 'Open shifts',
   'nav.myShifts': 'My shifts',
@@ -239,6 +248,9 @@ export const en: Record<MessageKey, string> = {
   'shifts.full': 'Full',
   'shifts.mine': 'You hold this shift',
   'shifts.claimed': 'You claimed "{name}".',
+  'shifts.newAvailable': 'New shifts were just added.',
+  'live.on': 'Live',
+  'live.off': 'Live updates lost, reconnecting…',
 
   'my.title': 'My shifts',
   'my.week': 'This week ({from} – {to})',
