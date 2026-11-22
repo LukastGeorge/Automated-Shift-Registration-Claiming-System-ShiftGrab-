@@ -1,0 +1,51 @@
+// Angular Material 3 theme. `color-scheme: light dark` follows the user's system setting; every component and
+// every custom style reads the --mat-sys-* variables, so both themes stay readable without extra rules.
+@use '@angular/material' as mat;
+
+html {
+  height: 100%;
+  color-scheme: light dark;
+  @include mat.theme(
+    (
+      color: (
+        primary: mat.$azure-palette,
+        tertiary: mat.$orange-palette,
+      ),
+      typography: (
+        plain-family: ('Be Vietnam Pro', Roboto, system-ui, sans-serif),
+        brand-family: ('Be Vietnam Pro', Roboto, system-ui, sans-serif),
+      ),
+      density: 0,
+    )
+  );
+}
+
+body {
+  margin: 0;
+  min-height: 100%;
+  background-color: var(--mat-sys-surface);
+  color: var(--mat-sys-on-surface);
+  font: var(--mat-sys-body-medium);
+}
+
+h1 {
+  font: var(--mat-sys-headline-small);
+  margin: 0 0 16px;
+}
+
+h2 {
+  font: var(--mat-sys-title-large);
+  margin: 24px 0 12px;
+}
+
+.snack-error {
+  --mat-snack-bar-container-color: var(--mat-sys-error-container);
+  --mat-snack-bar-supporting-text-color: var(--mat-sys-on-error-container);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
