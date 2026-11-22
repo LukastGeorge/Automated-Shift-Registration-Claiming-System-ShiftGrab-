@@ -3,7 +3,7 @@ import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { APP_CONFIG } from '../config';
-import { Page, Shift, ShiftStatus } from './models';
+import { NewShift, Page, Shift, ShiftChanges, ShiftStatus } from './models';
 
 export interface ShiftQuery {
   from?: string;
@@ -33,5 +33,22 @@ export class ShiftApi {
       params = params.append('status', status);
     }
     return this.http.get<Page<Shift>>(this.base, { params });
+  }
+
+  create(shift: NewShift): Observable<Shift> {
+    return this.http.post<Shift>(this.base, shift);
+  }
+
+  /**
+   * Optimistic locking (SG-21): `version` is the one the manager was looking at. If someone changed the shift
+   * since, the backend answers 409 CONCURRENT_MODIFICATION instead of silently overwriting their change.
+   */
+  update(id: number, version: number, changes: ShiftChanges): Observable<Shift> {
+    return this.http.patch<Shift>(`${this.base}/${id}`, changes, { headers: { 'If-Match': `"${version}"` } });
+  }
+
+  /** Cancels the shift and every registration on it in one transaction (BR-07). */
+  cancel(id: number, reason?: string): Observable<Shift> {
+    return this.http.post<Shift>(`${this.base}/${id}/cancel`, reason ? { reason } : null);
   }
 }

@@ -69,6 +69,54 @@ export interface MyShifts {
   registrations: Page<MyShift>;
 }
 
+/** Fields a manager may change on a shift; omitted fields stay as they are (PATCH). */
+export interface ShiftChanges {
+  name?: string;
+  startAt?: string;
+  endAt?: string;
+  registrationOpenAt?: string;
+  maxSlots?: number;
+}
+
+export interface NewShift {
+  name: string;
+  startAt: string;
+  endAt: string;
+  registrationOpenAt: string;
+  maxSlots: number;
+}
+
+/** Recurring shift template; times are local to the organisation zone, `openBefore` is an ISO-8601 duration. */
+export interface ShiftTemplate {
+  id: number;
+  name: string;
+  weekdays: number[];
+  startTime: string;
+  endTime: string;
+  overnight: boolean;
+  maxSlots: number;
+  openBefore: string;
+  validFrom: string;
+  validTo: string;
+}
+
+export type NewShiftTemplate = Omit<ShiftTemplate, 'id' | 'overnight'>;
+
+export interface GenerationResult {
+  templateId: number;
+  createdShiftIds: number[];
+  skippedExisting: number;
+  skippedPast: number;
+}
+
+export interface UserSummary {
+  id: number;
+  fullName: string;
+  email: string;
+  role: Role;
+  hourlyRate: number;
+}
+
 export interface Me {
   id: number;
   fullName: string;

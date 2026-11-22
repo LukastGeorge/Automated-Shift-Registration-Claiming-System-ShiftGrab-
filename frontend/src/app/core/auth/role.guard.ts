@@ -15,7 +15,7 @@ export function roleGuard(role: Role): CanMatchFn {
 /** Start page per role. Users without a ShiftGrab role see why instead of a broken page. */
 export function homeFor(auth: AuthService): string {
   if (auth.isManager()) {
-    return 'profile';
+    return 'manage/shifts';
   }
   return auth.isStaff() ? 'shifts' : 'forbidden';
 }
