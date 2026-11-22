@@ -1,0 +1,72 @@
+name: CI - Frontend
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - "frontend/**"
+      - ".github/workflows/ci-frontend.yml"
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - "frontend/**"
+      - ".github/workflows/ci-frontend.yml"
+
+concurrency:
+  group: ci-frontend-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lint-test-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      # `npm ci` installs exactly what package-lock.json says, so CI builds what developers tested.
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      # Coverage thresholds (lines/statements/functions >= 70%, branches >= 60%) live in angular.json
+      # and fail this step when coverage drops, like the backend JaCoCo gate.
+      - name: Unit tests with coverage
+        run: npx ng test --watch=false --coverage
+
+      - name: Production build
+        run: npm run build
+
+      - name: Coverage summary
+        if: always() && hashFiles('frontend/coverage/**/coverage-summary.json') != ''
+        run: |
+          file=$(find coverage -name coverage-summary.json | head -n 1)
+          node -e '
+            const t = require("./" + process.argv[1]).total;
+            const row = (name, k, gate) => `| ${name} | ${t[k].covered} | ${t[k].total} | ${t[k].pct}% | ${gate}% |`;
+            console.log(["## Frontend coverage", "", "| Counter | Covered | Total | Ratio | Gate |", "|---|---|---|---|---|",
+              row("Line", "lines", 70), row("Branch", "branches", 60), row("Function", "functions", 70)].join("\n"));
+          ' "$file" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload coverage report
+        if: always() && hashFiles('frontend/coverage/**/index.html') != ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: frontend-coverage
+          path: frontend/coverage/
+          retention-days: 14
