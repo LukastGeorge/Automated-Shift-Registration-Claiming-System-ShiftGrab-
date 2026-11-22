@@ -13,7 +13,8 @@ export class LoadState<T> {
   readonly error = signal<Problem | undefined>(undefined);
   private generation = 0;
 
-  run(source: Observable<T>): void {
+  /** `onData` runs for the latest call only, e.g. to copy the result into editable page state. */
+  run(source: Observable<T>, onData?: (value: T) => void): void {
     const current = ++this.generation;
     this.loading.set(true);
     this.error.set(undefined);
@@ -21,6 +22,7 @@ export class LoadState<T> {
       next: (value) => {
         if (current === this.generation) {
           this.data.set(value);
+          onData?.(value);
         }
       },
       error: (err: unknown) => {

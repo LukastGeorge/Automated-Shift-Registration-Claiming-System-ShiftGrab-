@@ -1,0 +1,92 @@
+<h1>{{ 'my.title' | t }}</h1>
+
+@if (week(); as w) {
+  <mat-card appearance="outlined" class="week" data-testid="week">
+    <div class="week-head">
+      <span>{{ 'my.week' | t: { from: fmt.date(w.weekStart + 'T12:00:00Z'), to: fmt.date(w.weekEnd + 'T12:00:00Z') } }}</span>
+      <strong class="hours">{{ 'my.hoursUsed' | t: { used: fmt.hours(w.confirmedHours), limit: fmt.hours(w.limitHours) } }}</strong>
+    </div>
+    <div
+      class="bar"
+      role="meter"
+      aria-valuemin="0"
+      [attr.aria-valuemax]="w.limitHours"
+      [attr.aria-valuenow]="w.confirmedHours"
+      [attr.aria-label]="'my.hoursUsed' | t: { used: w.confirmedHours, limit: w.limitHours }"
+    >
+      <span [style.width.%]="weekPercent()" [class.high]="weekPercent() >= 90"></span>
+    </div>
+    <span class="remaining">{{ 'my.remaining' | t: { hours: fmt.hours(w.remainingHours) } }}</span>
+  </mat-card>
+}
+
+<mat-button-toggle-group
+  class="scope"
+  [value]="scope()"
+  (change)="setScope($event.value)"
+  [attr.aria-label]="'my.title' | t"
+>
+  <mat-button-toggle value="upcoming">{{ 'my.upcoming' | t }}</mat-button-toggle>
+  <mat-button-toggle value="past" data-testid="scope-past">{{ 'my.past' | t }}</mat-button-toggle>
+</mat-button-toggle-group>
+
+@if (state.loading()) {
+  <mat-progress-bar mode="indeterminate" [attr.aria-label]="'app.loading' | t" />
+}
+@if (state.error(); as problem) {
+  <app-load-error [problem]="problem" (retry)="load()" />
+}
+
+@if (state.data() && items().length === 0) {
+  <div class="empty">
+    <p>{{ 'my.empty' | t }}</p>
+    @if (scope() === 'upcoming') {
+      <a mat-flat-button routerLink="/shifts">{{ 'my.findShifts' | t }}</a>
+    }
+  </div>
+}
+
+<ul class="list">
+  @for (item of items(); track item.id) {
+    <li class="item" [class.cancelled]="item.status === 'CANCELLED'" [attr.data-testid]="'reg-' + item.id">
+      <div class="when">
+        <span class="date">{{ fmt.date(item.startAt) }}</span>
+        <span class="time">{{ fmt.time(item.startAt) }} – {{ fmt.time(item.endAt) }}</span>
+      </div>
+      <div class="what">
+        <strong>{{ item.shiftName ?? '#' + item.shiftId }}</strong>
+        <span class="meta">
+          {{ 'shifts.hours' | t: { hours: fmt.hours(item.hours) } }} ·
+          {{ 'my.rate' | t: { amount: fmt.money(item.hourlyRateSnapshot) } }} ·
+          <span class="chip">{{ statusKey(item.status) | t }}</span>
+        </span>
+      </div>
+      <div class="act">
+        @if (item.cancellable) {
+          <button
+            mat-stroked-button
+            type="button"
+            (click)="cancel(item)"
+            [disabled]="cancelling() === item.id"
+            [attr.data-testid]="'cancel-' + item.id"
+          >
+            {{ 'my.cancel' | t }}
+          </button>
+          <span class="hint">{{ 'my.cancelUntil' | t: { time: fmt.dateTime(item.cancelDeadline) } }}</span>
+        } @else if (item.status === 'CONFIRMED' && scope() === 'upcoming') {
+          <span class="hint">{{ 'my.cancelClosed' | t }}</span>
+        }
+      </div>
+    </li>
+  }
+</ul>
+
+@if (totalPages() > 1) {
+  <nav class="pager" [attr.aria-label]="'nav.menu' | t">
+    <button mat-button type="button" (click)="goTo(page() - 1)" [disabled]="page() === 0">{{ 'app.previous' | t }}</button>
+    <span>{{ 'app.page' | t: { page: page() + 1, total: totalPages() } }}</span>
+    <button mat-button type="button" (click)="goTo(page() + 1)" [disabled]="page() + 1 >= totalPages()">
+      {{ 'app.next' | t }}
+    </button>
+  </nav>
+}

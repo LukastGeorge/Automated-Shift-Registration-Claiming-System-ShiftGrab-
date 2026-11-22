@@ -17,7 +17,11 @@ interface NavItem {
 }
 
 /** Navigation entries; each feature adds its own and the shell shows only those the user's role allows. */
-export const NAV_ITEMS: NavItem[] = [{ path: '/profile', label: 'nav.profile', icon: 'person' }];
+export const NAV_ITEMS: NavItem[] = [
+  { path: '/shifts', label: 'nav.openShifts', icon: 'event_available', role: 'STAFF' },
+  { path: '/my-shifts', label: 'nav.myShifts', icon: 'calendar_month', role: 'STAFF' },
+  { path: '/profile', label: 'nav.profile', icon: 'person' },
+];
 
 @Component({
   selector: 'app-shell',
