@@ -20,6 +20,9 @@ interface NavItem {
 export const NAV_ITEMS: NavItem[] = [
   { path: '/shifts', label: 'nav.openShifts', icon: 'event_available', role: 'STAFF' },
   { path: '/my-shifts', label: 'nav.myShifts', icon: 'calendar_month', role: 'STAFF' },
+  { path: '/manage/shifts', label: 'nav.manageShifts', icon: 'edit_calendar', role: 'MANAGER' },
+  { path: '/manage/templates', label: 'nav.templates', icon: 'event_repeat', role: 'MANAGER' },
+  { path: '/manage/staff', label: 'nav.staff', icon: 'group', role: 'MANAGER' },
   { path: '/profile', label: 'nav.profile', icon: 'person' },
 ];
 

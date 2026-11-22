@@ -1,0 +1,106 @@
+<header class="head">
+  <h1>{{ 'admin.title' | t }}</h1>
+  <button mat-flat-button type="button" (click)="openForm()" data-testid="new-shift">
+    <mat-icon aria-hidden="true">add</mat-icon>
+    {{ 'admin.new' | t }}
+  </button>
+</header>
+
+<form class="filters" (ngSubmit)="applyFilters()">
+  <mat-form-field subscriptSizing="dynamic">
+    <mat-label>{{ 'admin.from' | t }}</mat-label>
+    <input matInput type="date" name="from" [ngModel]="from()" (ngModelChange)="from.set($event)" required />
+  </mat-form-field>
+  <mat-form-field subscriptSizing="dynamic">
+    <mat-label>{{ 'admin.to' | t }}</mat-label>
+    <input matInput type="date" name="to" [ngModel]="to()" (ngModelChange)="to.set($event)" required />
+  </mat-form-field>
+  <mat-button-toggle-group
+    multiple
+    name="status"
+    [value]="status()"
+    (change)="status.set($event.value); applyFilters()"
+    [attr.aria-label]="'admin.status' | t"
+  >
+    @for (s of statuses; track s) {
+      <mat-button-toggle [value]="s">{{ statusKey(s) | t }}</mat-button-toggle>
+    }
+  </mat-button-toggle-group>
+  <button mat-stroked-button type="submit">
+    <mat-icon aria-hidden="true">refresh</mat-icon>
+    {{ 'app.refresh' | t }}
+  </button>
+</form>
+
+@if (state.loading()) {
+  <mat-progress-bar mode="indeterminate" [attr.aria-label]="'app.loading' | t" />
+}
+@if (state.error(); as problem) {
+  <app-load-error [problem]="problem" (retry)="load()" />
+}
+
+@if (state.data(); as data) {
+  @if (data.content.length === 0) {
+    <p class="empty">{{ 'admin.empty' | t }}</p>
+  } @else {
+    <div class="table-wrap">
+      <table mat-table [dataSource]="data.content">
+        <ng-container matColumnDef="time">
+          <th mat-header-cell *matHeaderCellDef>{{ 'admin.colTime' | t }}</th>
+          <td mat-cell *matCellDef="let s">
+            <span class="date">{{ fmt.date(s.startAt) }}</span>
+            <span class="num">{{ fmt.time(s.startAt) }} – {{ fmt.time(s.endAt) }}</span>
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="name">
+          <th mat-header-cell *matHeaderCellDef>{{ 'admin.colName' | t }}</th>
+          <td mat-cell *matCellDef="let s">{{ s.name }}</td>
+        </ng-container>
+        <ng-container matColumnDef="slots">
+          <th mat-header-cell *matHeaderCellDef>{{ 'admin.colSlots' | t }}</th>
+          <td mat-cell *matCellDef="let s" class="num">{{ s.bookedSlots }}/{{ s.maxSlots }}</td>
+        </ng-container>
+        <ng-container matColumnDef="opens">
+          <th mat-header-cell *matHeaderCellDef>{{ 'admin.colOpens' | t }}</th>
+          <td mat-cell *matCellDef="let s" class="num">{{ fmt.dateTime(s.registrationOpenAt) }}</td>
+        </ng-container>
+        <ng-container matColumnDef="status">
+          <th mat-header-cell *matHeaderCellDef>{{ 'admin.colStatus' | t }}</th>
+          <td mat-cell *matCellDef="let s">
+            <span class="chip" [attr.data-status]="s.status">{{ statusLabel(s.status) }}</span>
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef>
+            <span class="sr-only">{{ 'admin.colActions' | t }}</span>
+          </th>
+          <td mat-cell *matCellDef="let s" class="actions">
+            @if (editable(s)) {
+              <button mat-icon-button type="button" (click)="openForm(s)" [matTooltip]="'app.edit' | t"
+                      [attr.aria-label]="'app.edit' | t" [attr.data-testid]="'edit-' + s.id">
+                <mat-icon>edit</mat-icon>
+              </button>
+              <button mat-icon-button type="button" (click)="cancel(s)" [matTooltip]="'admin.cancelShift' | t"
+                      [attr.aria-label]="'admin.cancelShift' | t" [attr.data-testid]="'cancel-' + s.id">
+                <mat-icon>event_busy</mat-icon>
+              </button>
+            }
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="columns"></tr>
+        <tr mat-row *matRowDef="let row; columns: columns" [attr.data-testid]="'row-' + row.id"></tr>
+      </table>
+    </div>
+
+    @if (data.totalPages > 1) {
+      <nav class="pager" [attr.aria-label]="'nav.menu' | t">
+        <button mat-button type="button" (click)="goTo(page() - 1)" [disabled]="page() === 0">{{ 'app.previous' | t }}</button>
+        <span>{{ 'app.page' | t: { page: page() + 1, total: data.totalPages } }}</span>
+        <button mat-button type="button" (click)="goTo(page() + 1)" [disabled]="page() + 1 >= data.totalPages">
+          {{ 'app.next' | t }}
+        </button>
+      </nav>
+    }
+  }
+}

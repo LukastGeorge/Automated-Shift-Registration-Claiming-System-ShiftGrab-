@@ -1,0 +1,70 @@
+<h2 mat-dialog-title>{{ (isNew ? 'form.newTitle' : 'form.editTitle') | t }}</h2>
+
+<mat-dialog-content>
+  <form [formGroup]="form" (ngSubmit)="submit()" id="shift-form">
+    <p class="note">{{ 'form.zone' | t: { zone: fmt.timeZone } }}</p>
+
+    <mat-form-field>
+      <mat-label>{{ 'form.name' | t }}</mat-label>
+      <input matInput formControlName="name" maxlength="100" data-testid="name" />
+      @if (form.controls.name.hasError('required')) {
+        <mat-error>{{ 'app.required' | t }}</mat-error>
+      }
+    </mat-form-field>
+
+    @if (timesLocked) {
+      <p class="note" data-testid="times-locked">{{ 'form.timesLocked' | t }}</p>
+    }
+    <div class="row">
+      <mat-form-field>
+        <mat-label>{{ 'form.start' | t }}</mat-label>
+        <input matInput type="datetime-local" formControlName="start" data-testid="start" />
+      </mat-form-field>
+      <mat-form-field>
+        <mat-label>{{ 'form.end' | t }}</mat-label>
+        <input matInput type="datetime-local" formControlName="end" data-testid="end" />
+      </mat-form-field>
+    </div>
+
+    <div class="row">
+      <mat-form-field>
+        <mat-label>{{ 'form.opensAt' | t }}</mat-label>
+        <input matInput type="datetime-local" formControlName="opensAt" data-testid="opensAt" />
+      </mat-form-field>
+      <mat-form-field>
+        <mat-label>{{ 'form.maxSlots' | t }}</mat-label>
+        <input matInput type="number" formControlName="maxSlots" [min]="minSlots" max="500" data-testid="maxSlots" />
+        @if (form.controls.maxSlots.hasError('min') && minSlots > 1) {
+          <mat-error>{{ 'form.minSlots' | t: { booked: minSlots } }}</mat-error>
+        } @else if (form.controls.maxSlots.invalid) {
+          <mat-error>{{ 'form.slotsRange' | t }}</mat-error>
+        }
+      </mat-form-field>
+    </div>
+
+    @if (form.touched || form.dirty) {
+      @if (form.hasError('endAfterStart')) {
+        <p class="error" role="alert">{{ 'form.endAfterStart' | t }}</p>
+      }
+      @if (form.hasError('maxDuration')) {
+        <p class="error" role="alert">{{ 'form.maxDuration' | t }}</p>
+      }
+      @if (form.hasError('opensBeforeStart')) {
+        <p class="error" role="alert">{{ 'form.opensBeforeStart' | t }}</p>
+      }
+      @if (form.hasError('startInFuture')) {
+        <p class="error" role="alert">{{ 'form.startInFuture' | t }}</p>
+      }
+    }
+    @if (noChanges()) {
+      <p class="note" role="status">{{ 'form.noChanges' | t }}</p>
+    }
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button type="button" mat-dialog-close>{{ 'app.close' | t }}</button>
+  <button mat-flat-button type="submit" form="shift-form" [disabled]="saving()" data-testid="save">
+    {{ (isNew ? 'app.create' : 'app.save') | t }}
+  </button>
+</mat-dialog-actions>

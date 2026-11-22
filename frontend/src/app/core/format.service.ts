@@ -85,6 +85,22 @@ export function fromZonedInput(local: string, timeZone: string): string {
   return new Date(wallClockAsUtc - offset * 60_000).toISOString();
 }
 
+/** `YYYY-MM-DD` plus `days` calendar days (no time zone involved). */
+export function addDays(date: string, days: number): string {
+  const [y, m, d] = date.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
+}
+
+/** ISO-8601 duration (`P7D`, `PT168H`, `P1DT12H`) → days, as sent by the backend for `openBefore`. */
+export function isoDurationDays(duration: string): number {
+  const match = /^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/.exec(duration);
+  if (!match) {
+    return NaN;
+  }
+  const [, d = '0', h = '0', m = '0', s = '0'] = match;
+  return Number(d) + Number(h) / 24 + Number(m) / 1440 + Number(s) / 86_400;
+}
+
 /** UTC ISO instant → `YYYY-MM-DDTHH:mm` in the organisation zone, for `<input type="datetime-local">`. */
 export function toZonedInput(iso: string, timeZone: string): string {
   const instant = new Date(iso);
