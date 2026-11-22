@@ -4,6 +4,20 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [0.4.0] - 2026-11-22 — Sprint 4: Web app
+
+### Added
+- Angular 22 web app: Keycloak login (Authorization Code + PKCE), role-based navigation and guards, Vietnamese/English at runtime, light/dark theme, runtime `config.json` so one build runs in every environment ([#23](../../issues/23), [#84](../../pull/84)).
+- Staff screens: open shifts by day with a live countdown to the opening time, claim with in-place updates and clear messages for every refusal, my shifts with weekly hours, cancel before the deadline ([#24](../../issues/24), [#86](../../pull/86)).
+- Manager screens: shifts by date range with create / edit (`If-Match`, only changed fields, locked times once booked) / cancel with a reason; recurring templates with idempotent generation; hourly rates ([#25](../../issues/25), [#87](../../pull/87)).
+- Frontend CI: lint, Vitest with a coverage gate (70% lines / 60% branches), production build; Dependabot for npm ([#26](../../issues/26), [#85](../../pull/85)).
+
+### Changed
+- Redisson 4.8.0, Maven 3.10.2, Mailpit 1.34.0, `actions/setup-java` v6 ([#78](../../pull/78), [#80](../../pull/80), [#81](../../pull/81), [#83](../../pull/83)).
+
+### Security
+- Role-restricted endpoints are authorized in the security filter chain before request validation, so the wrong role gets `403` instead of a `400` that listed the endpoint's input rules. Found by the end-to-end smoke test ([#88](../../issues/88), [#89](../../pull/89)).
+
 ## [0.3.0] - 2026-11-22 — Sprint 3: Claiming core and concurrency
 
 ### Added
