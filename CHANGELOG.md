@@ -4,6 +4,24 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [0.3.0] - 2026-11-22 — Sprint 3: Claiming core and concurrency
+
+### Added
+- Distributed lock: `RedisLockProvider` (Redisson) behind `ShiftLockProvider`, ordered keys (user → shift), 3 s wait budget, explicit 10 s lease, fail closed when Redis is down; lock-wait timer metric ([#18](../../issues/18), [#73](../../pull/73)).
+- Claim a shift slot with all business rules (BR-01..BR-05): registration window, weekly hour limit split per ISO week, no overlap, atomic slot reservation; flash-sale fast path rejects full shifts before locking ([#19](../../issues/19), [#74](../../pull/74)).
+- Cancel a registration before the deadline (BR-06), returning the slot immediately ([#20](../../issues/20), [#75](../../pull/75)).
+- My shifts with weekly hours ([#21](../../issues/21), [#76](../../pull/76)).
+- Concurrency suite: two backend instances sharing PostgreSQL and Redis, 100 staff vs 5 slots → exactly 5 claims; each defence layer tested alone (ADR-0005) ([#22](../../issues/22), [#77](../../pull/77)).
+- Error codes `CLAIM_BUSY` and `LOCK_UNAVAILABLE` (503 with `Retry-After`).
+
+### Changed
+- Weekly hour limit (40 h) and cancel deadline (24 h) are deployment settings.
+- Dependencies: Redis 8.10.3 image, JaCoCo 0.8.16, Maven 3.10.1, `actions/upload-artifact` v7 ([#66](../../pull/66), [#68](../../pull/68)–[#70](../../pull/70)); Dependabot ignores PostgreSQL major upgrades ([#72](../../pull/72)).
+
+### Fixed
+- Parallel first requests of a new user could fail on `uq_users_email` during profile provisioning (one retry).
+- Profile provisioning inside a read-only transaction failed; the upsert now runs in its own transaction.
+
 ## [0.2.0] - 2026-11-16 — Sprints 1–2: Backend foundation and shift management
 
 ### Added
