@@ -59,6 +59,13 @@ public class UserAccountRepository {
                 .single();
     }
 
+    public Optional<UserAccount> findById(long id) {
+        return jdbc.sql("SELECT " + COLUMNS + " FROM users WHERE id = :id")
+                .param("id", id)
+                .query(UserAccountRepository::map)
+                .optional();
+    }
+
     /** Locks the row so that two managers changing the same rate are serialised and the old value is exact. */
     public Optional<UserAccount> findByIdForUpdate(long id) {
         return jdbc.sql("SELECT " + COLUMNS + " FROM users WHERE id = :id FOR UPDATE")

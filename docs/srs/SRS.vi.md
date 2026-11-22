@@ -125,7 +125,7 @@ Mỗi story có tiêu chí nghiệm thu (AC) dạng Given/When/Then. Mã `SG-xx`
 
 **SG-40: Cập nhật suất trực tiếp.** AC: Hai người cùng xem danh sách ca, khi một người giành thì người kia thấy số suất còn lại thay đổi trong vòng 1 giây mà không cần tải lại, bất kể instance backend nào xử lý request.
 
-**SG-41: Thông báo email.** AC: gửi email khi giành ca thành công, khi hủy, khi quản lý hủy ca; lỗi gửi email không làm rollback việc giành ca.
+**SG-41: Thông báo email.** AC: gửi email khi giành ca thành công, khi hủy, khi quản lý hủy ca; lỗi gửi email không làm rollback việc giành ca. *Làm rõ ở Sprint 5:* email cũng không bị mất. Email chưa gửi được sẽ được gửi lại cho tới khi mail server nhận (ADR-0007), nên trong trường hợp hiếm một người có thể nhận trùng email. Mỗi email có tiếng Việt trước, tiếng Anh sau.
 
 **SG-42: Nhắc giờ mở đăng ký.** AC: nhân viên bật nhận nhắc sẽ nhận email 30 phút trước khi ca mở; với 2 instance thì mỗi nhắc nhở chỉ gửi đúng một lần.
 

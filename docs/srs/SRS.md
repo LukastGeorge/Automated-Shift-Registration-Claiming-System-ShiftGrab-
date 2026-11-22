@@ -125,7 +125,7 @@ Each story has acceptance criteria (AC) in Given/When/Then form. IDs `SG-xx` mat
 
 **SG-40 — Live slot updates.** AC: Given two users viewing the same shift list, when one claims, then the other sees the remaining slots update within 1 s without reloading, regardless of which backend instance served the claim.
 
-**SG-41 — E-mail notifications.** AC: e-mail on successful claim, on cancellation, and when a manager cancels a shift; sending failures never roll back the claim.
+**SG-41 — E-mail notifications.** AC: e-mail on successful claim, on cancellation, and when a manager cancels a shift; sending failures never roll back the claim. *Clarified in Sprint 5:* e-mails are not lost either: undelivered e-mails are retried until the mail server accepts them (ADR-0007), so a staff member may exceptionally receive one twice. Each e-mail contains Vietnamese first, then English.
 
 **SG-42 — Opening reminder.** AC: staff who opted in receive an e-mail 30 min before a shift opens; with 2 instances each reminder is sent exactly once.
 
