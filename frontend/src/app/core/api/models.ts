@@ -10,6 +10,65 @@ export interface Page<T> {
   totalPages: number;
 }
 
+export type ShiftStatus = 'OPEN' | 'FULL' | 'CANCELLED';
+
+export interface Shift {
+  id: number;
+  name: string;
+  startAt: string;
+  endAt: string;
+  registrationOpenAt: string;
+  maxSlots: number;
+  bookedSlots: number;
+  availableSlots: number;
+  status: ShiftStatus;
+  templateId: number | null;
+  version: number;
+}
+
+export type RegistrationStatus = 'CONFIRMED' | 'CANCELLED';
+
+export interface Registration {
+  id: number;
+  shiftId: number;
+  status: RegistrationStatus;
+  startAt: string;
+  endAt: string;
+  hourlyRateSnapshot: number;
+  registeredAt: string;
+  cancelledAt: string | null;
+}
+
+/** One row of "my shifts": the registration plus what the screen needs to offer (or refuse) a cancel. */
+export interface MyShift {
+  id: number;
+  shiftId: number;
+  shiftName: string | null;
+  status: RegistrationStatus;
+  startAt: string;
+  endAt: string;
+  hours: number;
+  hourlyRateSnapshot: number;
+  registeredAt: string;
+  cancelledAt: string | null;
+  cancellable: boolean;
+  cancelDeadline: string;
+}
+
+/** Current ISO week in the organisation zone, against the weekly hour limit (BR-04). */
+export interface WeekSummary {
+  weekStart: string;
+  weekEnd: string;
+  confirmedHours: number;
+  limitHours: number;
+  remainingHours: number;
+}
+
+export interface MyShifts {
+  currentWeek: WeekSummary;
+  registrations: Page<MyShift>;
+}
+
 export interface Me {
   id: number;
   fullName: string;

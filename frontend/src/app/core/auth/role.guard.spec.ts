@@ -30,7 +30,7 @@ describe('roleGuard', () => {
 
   it('picks the start page from the role', async () => {
     await loginAs(['STAFF']);
-    expect(homeFor(TestBed.inject(AuthService))).toBe('profile');
+    expect(homeFor(TestBed.inject(AuthService))).toBe('shifts');
   });
 
   it('explains instead of failing when the user has no ShiftGrab role', async () => {
