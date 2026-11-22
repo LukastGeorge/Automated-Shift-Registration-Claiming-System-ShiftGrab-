@@ -103,6 +103,7 @@ sequenceDiagram
   participant EV as Event listeners
   S->>API: POST /api/v1/shifts/{id}/registrations (JWT)
   API->>SVC: claim(shiftId, userId)
+  SVC->>DB: fast path: shift already FULL? → SHIFT_FULL without locking
   SVC->>L: lock user:{userId} then shift:{shiftId} (fixed order)
   L-->>SVC: locks acquired (wait ≤ 3 s, lease 10 s)
   SVC->>DB: BEGIN

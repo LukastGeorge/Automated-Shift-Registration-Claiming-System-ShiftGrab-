@@ -19,6 +19,19 @@ Option 3:
 
 Constraint violations are translated to domain error codes (`SHIFT_FULL`, `ALREADY_REGISTERED`, `SHIFT_OVERLAP`) by the exception handler.
 
+## Verification (SG-34)
+| Test | Setup | Result |
+|---|---|---|
+| `MultiInstanceClaimTests` — AC7 | **Two backend instances** (two Spring applications on two HTTP ports) sharing PostgreSQL and Redis; 100 staff, 5 slots, requests released together and split across instances | exactly 5 × `201`, 95 × `SHIFT_FULL`; DB: `FULL`, `booked_slots = 5`, 5 confirmed rows |
+| `MultiInstanceClaimTests` — BR-04 | One staff member fires 10 claims of 8 h in one week, split across both instances | exactly 5 succeed (40 h); shows why layer 1 is needed for multi-row rules |
+| `DefenceLayerTests` — layer 2 alone | 50 unlocked transactions call `tryReserveSlot` on a 5-slot shift | exactly 5 succeed |
+| `DefenceLayerTests` — layer 3 alone | 20 concurrent raw inserts of the same registration / of 20 overlapping shifts | exactly 1 row each |
+| `ClaimApiTests` — layer 2 | status left `OPEN` while `booked_slots = max_slots` | `SHIFT_FULL`, no row inserted |
+
+The multi-instance test uses real signed JWTs (HMAC, test-only decoder) so 100 distinct users can call the API over HTTP without Keycloak. It found a real bug: parallel first requests of a new user could fail on `uq_users_email` during profile provisioning (fixed with one retry).
+
+**Flash-sale fast path:** a claim on a shift that is already `FULL` is rejected before taking any lock. It can only reject, never grant, so a stale read is harmless, and late requests no longer queue on the shift lock.
+
 ## Consequences
 - ➕ Correctness does not depend on any single component; each layer is independently testable.
 - ➕ Strong, demonstrable story: concurrency tests (100 threads vs 5 slots) and k6 load tests prove zero overbooking.

@@ -13,7 +13,7 @@
 
     <groupId>com.shiftgrab</groupId>
     <artifactId>shiftgrab-backend</artifactId>
-    <version>0.2.0</version>
+    <version>0.3.0</version>
     <name>ShiftGrab Backend</name>
     <description>Shift registration and claiming system — modular monolith</description>
 
@@ -22,7 +22,8 @@
         <spring-modulith.version>2.1.2</spring-modulith.version>
         <springdoc.version>3.2.0</springdoc.version>
         <testcontainers-keycloak.version>4.4.0</testcontainers-keycloak.version>
-        <jacoco.version>0.8.13</jacoco.version>
+        <jacoco.version>0.8.16</jacoco.version>
+        <redisson.version>3.50.0</redisson.version>
         <!-- Quality gate (project plan: coverage >= 70%) -->
         <jacoco.line.minimum>0.70</jacoco.line.minimum>
         <jacoco.branch.minimum>0.60</jacoco.branch.minimum>
@@ -60,6 +61,13 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security-oauth2-resource-server</artifactId>
+        </dependency>
+
+        <!-- Distributed lock for the claim path (ADR-0004) -->
+        <dependency>
+            <groupId>org.redisson</groupId>
+            <artifactId>redisson</artifactId>
+            <version>${redisson.version}</version>
         </dependency>
 
         <!-- Persistence -->
