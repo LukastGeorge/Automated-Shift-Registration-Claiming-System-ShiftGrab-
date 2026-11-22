@@ -75,6 +75,9 @@ shiftgrab:
     enabled: ${NOTIFICATION_ENABLED:true}
     from: ${MAIL_FROM:ShiftGrab <no-reply@shiftgrab.local>}
     app-url: ${APP_URL:http://localhost:4200}
+  reminders:                  # SG-42
+    lead-time: ${REMINDER_LEAD_TIME:30m}
+    interval: 1m
   lock:                       # ADR-0004
     provider: ${LOCK_PROVIDER:redis}          # redis | in-memory (single instance only)
     redis-address: ${REDIS_ADDRESS:redis://localhost:6379}

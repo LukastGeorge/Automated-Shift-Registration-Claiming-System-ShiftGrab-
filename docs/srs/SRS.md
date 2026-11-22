@@ -127,7 +127,7 @@ Each story has acceptance criteria (AC) in Given/When/Then form. IDs `SG-xx` mat
 
 **SG-41 — E-mail notifications.** AC: e-mail on successful claim, on cancellation, and when a manager cancels a shift; sending failures never roll back the claim. *Clarified in Sprint 5:* e-mails are not lost either: undelivered e-mails are retried until the mail server accepts them (ADR-0007), so a staff member may exceptionally receive one twice. Each e-mail contains Vietnamese first, then English.
 
-**SG-42 — Opening reminder.** AC: staff who opted in receive an e-mail 30 min before a shift opens; with 2 instances each reminder is sent exactly once.
+**SG-42 — Opening reminder.** AC: staff who opted in receive an e-mail 30 min before a shift opens; with 2 instances each reminder is sent exactly once. *Clarified in Sprint 5:* staff switch the reminder on or off on their profile page; one e-mail per person lists every shift opening within 30 minutes; a shift is reminded once (database marker), and shifts cancelled or filled in the meantime are left out.
 
 ### Epic E5 — Reporting & audit
 

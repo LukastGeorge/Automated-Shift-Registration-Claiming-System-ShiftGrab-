@@ -3,6 +3,7 @@ package com.shiftgrab.notification.internal;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.Locale;
 
 import com.shiftgrab.identity.UserAccount;
@@ -54,13 +55,42 @@ class EmailComposer {
                 "Tìm ca khác", "Find another shift", "/shifts");
     }
 
-    Email registrationOpensSoon(UserAccount user, Shift shift) {
-        ZonedDateTime opens = shift.registrationOpenAt().atZone(zone);
-        return compose(user, shift, "Sắp mở đăng ký", "Registration opens soon",
-                "Ca \"%s\" mở đăng ký lúc %s. Hãy sẵn sàng giành ca!".formatted(shift.name(), TIME.format(opens)),
-                "Registration for \"%s\" opens at %s. Get ready to claim it!".formatted(shift.name(),
-                        TIME.format(opens)),
-                "Xem ca còn trống", "Open shifts", "/shifts");
+    /** SG-42: one digest per person and run, listing every shift that opens soon (not one e-mail per shift). */
+    Email registrationOpensSoon(UserAccount user, List<Shift> shifts) {
+        StringBuilder vi = new StringBuilder();
+        StringBuilder en = new StringBuilder();
+        for (Shift shift : shifts) {
+            ZonedDateTime start = shift.startAt().atZone(zone);
+            String hours = TIME.format(start) + "–" + TIME.format(shift.endAt().atZone(zone));
+            String opens = TIME.format(shift.registrationOpenAt().atZone(zone));
+            vi.append("- %s: %s, %s (mở đăng ký lúc %s)%n".formatted(shift.name(), capitalise(VI_DAY.format(start)),
+                    hours, opens));
+            en.append("- %s: %s, %s (opens at %s)%n".formatted(shift.name(), EN_DAY.format(start), hours, opens));
+        }
+        String subject = shifts.size() == 1
+                ? "[ShiftGrab] Sắp mở đăng ký / Registration opens soon: " + shifts.getFirst().name()
+                : "[ShiftGrab] %d ca sắp mở đăng ký / %d shifts open soon".formatted(shifts.size(), shifts.size());
+        String body = """
+                Chào %s,
+
+                Các ca sau sắp mở đăng ký. Hãy sẵn sàng giành ca!
+                %s
+                Giờ theo múi %s. Xem ca còn trống: %s/shifts
+                Tắt nhắc nhở trong trang hồ sơ: %s/profile
+
+                ----------------------------------------
+
+                Hi %s,
+
+                These shifts open for registration soon. Get ready to claim them!
+                %s
+                Times in %s. Open shifts: %s/shifts
+                Turn reminders off on your profile page: %s/profile
+
+                --
+                ShiftGrab
+                """.formatted(user.fullName(), vi, zone, appUrl, appUrl, user.fullName(), en, zone, appUrl, appUrl);
+        return new Email(user.email(), subject, body);
     }
 
     private Email compose(UserAccount user, Shift shift, String viTitle, String enTitle, String viLine,

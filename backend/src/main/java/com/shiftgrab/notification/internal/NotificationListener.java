@@ -1,6 +1,8 @@
 package com.shiftgrab.notification.internal;
 
 import java.time.ZoneId;
+import java.util.Comparator;
+import java.util.List;
 import java.util.function.BiFunction;
 
 import org.slf4j.Logger;
@@ -17,6 +19,7 @@ import com.shiftgrab.registration.ShiftClaimed;
 import com.shiftgrab.registration.ShiftRegistrationsCancelled;
 import com.shiftgrab.shift.Shift;
 import com.shiftgrab.shift.ShiftSlots;
+import com.shiftgrab.shift.ShiftStatus;
 
 /**
  * SG-41: e-mails after a claim, a cancellation by the staff member, and a shift cancelled by the manager.
@@ -61,6 +64,20 @@ class NotificationListener {
         for (long userId : event.userIds()) {
             send(userId, event.shiftId(), (user, shift) -> composer.shiftCancelled(user, shift, event.reason()));
         }
+    }
+
+    /** SG-42 digest. Shifts cancelled or filled since the job ran are left out; nothing left means no e-mail. */
+    @ApplicationModuleListener
+    void on(OpeningReminderDue event) {
+        UserAccount user = users.findById(event.userId()).filter(UserAccount::reminderOptIn).orElse(null);
+        List<Shift> stillOpen = shifts.findAllById(event.shiftIds()).values().stream()
+                .filter(shift -> shift.status() == ShiftStatus.OPEN)
+                .sorted(Comparator.comparing(Shift::registrationOpenAt).thenComparing(Shift::id))
+                .toList();
+        if (user == null || stillOpen.isEmpty()) {
+            return;
+        }
+        mailer.send(composer.registrationOpensSoon(user, stillOpen));
     }
 
     private void send(long userId, long shiftId, BiFunction<UserAccount, Shift, Email> compose) {

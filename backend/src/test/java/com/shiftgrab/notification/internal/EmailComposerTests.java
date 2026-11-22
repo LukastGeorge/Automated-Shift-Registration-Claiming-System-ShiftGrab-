@@ -52,8 +52,9 @@ class EmailComposerTests {
     @DisplayName("Cancellation by the staff member and the opening reminder")
     void otherMessages() {
         assertThat(composer.cancelledByStaff(an, shift).subject()).contains("Đã hủy đăng ký / Registration cancelled");
-        Email reminder = composer.registrationOpensSoon(an, shift);
-        assertThat(reminder.subject()).contains("Sắp mở đăng ký / Registration opens soon");
-        assertThat(reminder.body()).contains("mở đăng ký lúc 08:30", "opens at 08:30");
+        Email reminder = composer.registrationOpensSoon(an, java.util.List.of(shift));
+        assertThat(reminder.subject()).isEqualTo("[ShiftGrab] Sắp mở đăng ký / Registration opens soon: Morning bar");
+        assertThat(reminder.body()).contains("- Morning bar: Thứ Hai, 07/01/2030, 08:00–12:00 (mở đăng ký lúc 08:30)",
+                "- Morning bar: Monday, 7 Jan 2030, 08:00–12:00 (opens at 08:30)", "/profile");
     }
 }
