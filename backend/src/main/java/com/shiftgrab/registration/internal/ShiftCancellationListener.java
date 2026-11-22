@@ -44,7 +44,7 @@ class ShiftCancellationListener {
                 .param("shiftId", event.shiftId())
                 .query(Long.class)
                 .list();
-        events.publishEvent(new ShiftRegistrationsCancelled(event.shiftId(), userIds.stream().sorted().toList(),
-                event.reason()));
+        events.publishEvent(new ShiftRegistrationsCancelled(event.shiftId(), event.actorId(),
+                userIds.stream().sorted().toList(), event.reason()));
     }
 }
