@@ -1,0 +1,9 @@
+{
+  "apiUrl": "http://localhost:8080",
+  "keycloak": {
+    "url": "http://localhost:8180",
+    "realm": "shiftgrab",
+    "clientId": "shiftgrab-frontend"
+  },
+  "timeZone": "Asia/Ho_Chi_Minh"
+}
