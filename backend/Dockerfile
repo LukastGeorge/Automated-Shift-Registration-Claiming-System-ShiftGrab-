@@ -3,7 +3,7 @@
 # Tests do not run here: CI runs them (with Testcontainers) before images are built and pushed.
 
 # ---- build: compile and split the jar into Spring Boot layers -------------------------------------------------
-FROM eclipse-temurin:21-jdk-alpine AS build
+FROM eclipse-temurin:24-jdk-alpine AS build
 WORKDIR /src
 COPY .mvn .mvn
 COPY mvnw pom.xml ./
@@ -14,7 +14,7 @@ RUN --mount=type=cache,target=/root/.m2 sh mvnw -B -q package -DskipTests \
  && java -Djarmode=tools -jar target/shiftgrab-backend-*.jar extract --layers --launcher --destination /extracted
 
 # ---- runtime: JRE only, non-root -----------------------------------------------------------------------------
-FROM eclipse-temurin:21-jre-alpine
+FROM eclipse-temurin:24-jre-alpine
 # Pick up OS security fixes published after the base image was built (scanned by Trivy, SG-73).
 RUN apk upgrade --no-cache && addgroup -S shiftgrab && adduser -S -G shiftgrab shiftgrab
 WORKDIR /app
