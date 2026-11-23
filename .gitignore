@@ -23,6 +23,11 @@ coverage/
 !.env.example
 !.env.prod.example
 
+# State written by infra/scripts/deploy.sh in the deployment directory
+.deployed-version
+.previous-version
+.deploying-version
+
 # IDE / OS
 .idea/
 .vscode/

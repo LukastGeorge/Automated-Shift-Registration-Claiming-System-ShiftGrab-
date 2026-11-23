@@ -78,17 +78,28 @@ const ws = new WebSocket(`${BASE.replace(/^http/, 'ws')}/ws`);
 const frames = [];
 await new Promise((resolve, reject) => { ws.onopen = resolve; ws.onerror = reject; });
 ws.onmessage = (e) => frames.push(String(e.data));
+// Wait for a condition instead of a fixed delay: right after a deployment the JVMs are cold and slower, and a
+// smoke test that decides on a rollback must not be flaky.
+async function waitFor(condition, timeoutMs = 15_000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const value = condition();
+    if (value) return value;
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  return undefined;
+}
+
 ws.send(`CONNECT\naccept-version:1.2\nhost:localhost\nAuthorization:Bearer ${staff}\n\n\0`);
-await new Promise((r) => setTimeout(r, 500));
-check(frames.some((f) => f.startsWith('CONNECTED')), 'STOMP CONNECT through the edge proxy');
-ws.send('SUBSCRIBE\nid:sub-0\ndestination:/topic/shifts\n\n\0');
-await new Promise((r) => setTimeout(r, 300));
+check(!!(await waitFor(() => frames.some((f) => f.startsWith('CONNECTED')))), 'STOMP CONNECT through the edge proxy');
+ws.send('SUBSCRIBE\nid:sub-0\ndestination:/topic/shifts\nreceipt:subscribed\n\n\0');
+await waitFor(() => frames.some((f) => f.startsWith('RECEIPT')), 5_000);
 
 const claim = await api(staff, 'POST', `/shifts/${shift.body.id}/registrations`);
 check(claim.status === 201, `staff claims through the load balancer → ${claim.status}`);
-await new Promise((r) => setTimeout(r, 1500));
-const live = frames.find((f) => f.startsWith('MESSAGE') && f.includes(`"shiftId":${shift.body.id}`));
-check(!!live && live.includes('"bookedSlots":1'), 'live slot update received over WebSocket');
+const live = await waitFor(() =>
+  frames.find((f) => f.startsWith('MESSAGE') && f.includes(`"shiftId":${shift.body.id}`) && f.includes('"bookedSlots":1')));
+check(!!live, 'live slot update received over WebSocket');
 ws.close();
 
 await api(manager, 'POST', `/shifts/${shift.body.id}/cancel`, { reason: 'edge smoke test cleanup' });
