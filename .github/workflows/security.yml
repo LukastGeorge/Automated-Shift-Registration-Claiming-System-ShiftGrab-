@@ -64,10 +64,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Scan Dockerfiles for misconfigurations
+      # A fresh checkout has no node_modules or build output, so the whole repository is quick to scan.
+      - name: Scan Dockerfiles and configuration for misconfigurations
         run: |
           docker run --rm -v "$PWD:/src:ro" "$TRIVY_IMAGE" config --quiet --exit-code 1 \
-            --severity HIGH,CRITICAL /src/backend/Dockerfile /src/frontend/Dockerfile
+            --severity HIGH,CRITICAL /src
 
       # The images are built exactly as CD builds them, so what is scanned is what would be deployed.
       - name: Build images
