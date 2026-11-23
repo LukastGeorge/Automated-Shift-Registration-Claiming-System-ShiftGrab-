@@ -50,7 +50,7 @@ services:
     image: nginx:1.29-alpine
     restart: unless-stopped
     logging: *logging
-    depends_on: [frontend, backend-1, backend-2, keycloak]
+    depends_on: [frontend, backend-1, backend-2, keycloak, grafana]
     ports:
       - "${EDGE_HTTP_PORT:-80}:80"
       - "${EDGE_HTTPS_PORT:-443}:443"
@@ -175,6 +175,47 @@ services:
         limits:
           memory: 128m
 
+  # Monitoring (SG-72). Prometheus is internal; Grafana is served by the edge at /grafana/.
+  prometheus:
+    image: prom/prometheus:v3.15.1
+    restart: unless-stopped
+    logging: *logging
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=7d
+    volumes:
+      - ../prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus-data:/prometheus
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+  grafana:
+    image: grafana/grafana:13.2.5
+    restart: unless-stopped
+    logging: *logging
+    depends_on: [prometheus]
+    environment:
+      GF_SERVER_ROOT_URL: ${SHIFTGRAB_PUBLIC_URL}/grafana/
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?set GRAFANA_ADMIN_PASSWORD}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      # Read-only dashboards for visitors of the demo when set to true; nothing can be changed anonymously.
+      GF_AUTH_ANONYMOUS_ENABLED: ${GRAFANA_ANONYMOUS:-false}
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+    volumes:
+      - ../grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    deploy:
+      resources:
+        limits:
+          memory: 192m
+
   # Catches e-mails until a real SMTP relay is configured (MAIL_HOST). Its web UI is not published.
   mailpit:
     image: axllent/mailpit:v1.34.0
@@ -190,3 +231,5 @@ volumes:
   redis-data:
   letsencrypt:
   acme-challenge:
+  prometheus-data:
+  grafana-data:

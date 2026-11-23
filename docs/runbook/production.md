@@ -49,6 +49,12 @@ node infra/scripts/smoke-test.mjs https://$DOMAIN <manager-password> <staff-pass
 
 It checks: the app and `config.json`, actuator and admin console hidden, no password-grant client, PKCE login through `/auth`, token issuer = public URL, API through the load balancer, claim, live update over `/ws`. CD runs it after every deployment (SG-75).
 
+## 5. Monitoring / Giám sát (SG-72)
+
+- **Grafana:** `https://$DOMAIN/grafana/` (user `admin`, password `GRAFANA_ADMIN_PASSWORD`). Dashboard **ShiftGrab overview**: instances up, request rate by status, claim p95/p99 against the 300 ms SLO (NFR-02), claim outcomes per minute, lock wait p95, 5xx ratio, JVM heap, DB connections. Datasource and dashboard are provisioned from `infra/grafana/` (configuration as code: edit the JSON, not the UI). `GRAFANA_ANONYMOUS=true` gives visitors read-only access for a demo.
+- **Prometheus:** internal only, scrapes `/actuator/prometheus` on both backends every 15 s, keeps 7 days. Alert rules in `infra/prometheus/alerts.yml`: instance down, 5xx > 5 %, claim p95 > 300 ms, claims refused because Redis is down. They show in Grafana/Prometheus; sending them to e-mail or chat (Alertmanager) is a later step.
+- Check the config before committing: `docker run --rm --entrypoint promtool -v "$PWD/infra/prometheus:/etc/prometheus" prom/prometheus:v3.15.1 check config /etc/prometheus/prometheus.yml`
+
 ## Test the production stack on a laptop / Chạy thử stack production trên máy
 
 Use `DOMAIN=localhost`, `SHIFTGRAB_PUBLIC_URL=http://localhost:8088`, `EDGE_HTTP_PORT=8088` and locally built images:
