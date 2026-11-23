@@ -1,0 +1,149 @@
+name: CD
+
+# SG-75 (ADR-0006). A release tag builds the images, pushes them to GHCR, scans them, and (once a server is
+# configured) deploys them with a rolling update, smoke-tests the live site and rolls back if the test fails.
+#
+# Deployment is switched on by the repository variable DEPLOY_ENABLED=true and needs, in the "production"
+# environment: variables PUBLIC_URL, DEPLOY_HOST, DEPLOY_USER; secrets DEPLOY_SSH_KEY, DEPLOY_KNOWN_HOSTS,
+# DEMO_MANAGER_PASSWORD, DEMO_STAFF_PASSWORD (optional GHCR_READ_TOKEN if the packages are private).
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Image version to (re)deploy, e.g. 0.7.0"
+        required: true
+
+concurrency:
+  group: cd-production
+  cancel-in-progress: false # never interrupt a deployment half-way
+
+permissions:
+  contents: read
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ghcr.io/lukastgeorge
+  TRIVY_IMAGE: aquasec/trivy:0.76.1
+
+jobs:
+  images:
+    name: image (${{ matrix.component }})
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write # push to GHCR with the workflow token, no personal token needed
+    strategy:
+      matrix:
+        component: [backend, frontend]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # v0.7.0 → 0.7.0, 0.7 and sha-<commit>: deployments use the exact version, the SHA traces any image to code.
+      - name: Image tags and labels
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.IMAGE_PREFIX }}/shiftgrab-${{ matrix.component }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,format=long
+
+      - name: Build and push
+        uses: docker/build-push-action@v7
+        with:
+          context: ${{ matrix.component }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # Supply chain: a bill of materials and build provenance travel with the image.
+          sbom: true
+          provenance: mode=max
+          cache-from: type=gha,scope=${{ matrix.component }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.component }}
+
+      - name: Scan the pushed image (gate on fixable CRITICAL)
+        run: |
+          image="${IMAGE_PREFIX}/shiftgrab-${{ matrix.component }}:${{ steps.meta.outputs.version }}"
+          docker pull "$image"
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock "$TRIVY_IMAGE" \
+            image --quiet --ignore-unfixed --exit-code 1 --severity CRITICAL "$image"
+
+      - name: Summary
+        run: echo "Pushed \`${IMAGE_PREFIX}/shiftgrab-${{ matrix.component }}\`:${{ steps.meta.outputs.version }}" >> "$GITHUB_STEP_SUMMARY"
+
+  deploy:
+    needs: images
+    # Runs after a successful image build, or on a manual (re)deployment; skipped until a server is configured.
+    if: >-
+      always() && vars.DEPLOY_ENABLED == 'true' &&
+      (needs.images.result == 'success' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: production
+      url: ${{ vars.PUBLIC_URL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Version to deploy
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then v="${{ inputs.version }}"; else v="${GITHUB_REF_NAME#v}"; fi
+          echo "value=$v" >> "$GITHUB_OUTPUT"
+          echo "Deploying **$v** to ${{ vars.PUBLIC_URL }}" >> "$GITHUB_STEP_SUMMARY"
+
+      # Only the pinned host key is trusted: a server answering with another key is refused (no TOFU).
+      - name: SSH access
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          printf 'Host prod\n  HostName %s\n  User %s\n  IdentityFile ~/.ssh/deploy_key\n  StrictHostKeyChecking yes\n' \
+            "${{ vars.DEPLOY_HOST }}" "${{ vars.DEPLOY_USER }}" > ~/.ssh/config
+
+      # The compose file, proxy and monitoring configuration ship with the version; secrets stay on the server.
+      - name: Copy configuration
+        run: rsync -az --delete --exclude 'docker/.env*' infra/ prod:/opt/shiftgrab/infra/
+
+      - name: Rolling deployment
+        env:
+          GHCR_READ_TOKEN: ${{ secrets.GHCR_READ_TOKEN }}
+        run: |
+          if [ -n "$GHCR_READ_TOKEN" ]; then
+            ssh prod "docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin" <<< "$GHCR_READ_TOKEN"
+          fi
+          ssh prod "cd /opt/shiftgrab && sh infra/scripts/deploy.sh ${{ steps.version.outputs.value }}"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+
+      - name: Smoke test the live site
+        run: node infra/scripts/smoke-test.mjs "${{ vars.PUBLIC_URL }}" "${{ secrets.DEMO_MANAGER_PASSWORD }}" "${{ secrets.DEMO_STAFF_PASSWORD }}"
+
+      - name: Roll back
+        if: failure()
+        run: |
+          ssh prod "cd /opt/shiftgrab && sh infra/scripts/deploy.sh --rollback"
+          echo "Smoke test failed: rolled back to the previous version" >> "$GITHUB_STEP_SUMMARY"
