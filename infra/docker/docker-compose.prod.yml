@@ -1,0 +1,263 @@
+# Production stack on one VPS (ADR-0006, SG-71). Images are pulled from GHCR, never built on the server.
+#
+#   docker compose -f infra/docker/docker-compose.prod.yml --env-file infra/docker/.env.prod up -d
+#
+# Only the edge proxy publishes ports. PostgreSQL, Redis, Keycloak and the backends are reachable on the private
+# Compose network only. Settings and secrets come from .env.prod (template: .env.prod.example, never committed).
+name: shiftgrab
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"   # log rotation: at most 3 x 10 MB per container
+    max-file: "3"
+
+x-backend: &backend
+  image: ${IMAGE_PREFIX:-ghcr.io/lukastgeorge}/shiftgrab-backend:${SHIFTGRAB_VERSION:?set SHIFTGRAB_VERSION}
+  restart: unless-stopped
+  logging: *logging
+  depends_on:
+    postgres: { condition: service_healthy }
+    redis: { condition: service_healthy }
+  environment:
+    DB_HOST: postgres
+    DB_PORT: "5432"
+    DB_NAME: shiftgrab
+    DB_USER: shiftgrab
+    DB_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD}
+    REDIS_ADDRESS: redis://redis:6379
+    # Tokens carry the public issuer; the signing keys are fetched over the private network (no hairpin via the
+    # internet and the edge proxy).
+    KEYCLOAK_ISSUER_URI: ${SHIFTGRAB_PUBLIC_URL}/auth/realms/shiftgrab
+    SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/auth/realms/shiftgrab/protocol/openid-connect/certs
+    CORS_ALLOWED_ORIGINS: ${SHIFTGRAB_PUBLIC_URL}
+    APP_URL: ${SHIFTGRAB_PUBLIC_URL}
+    SERVER_FORWARD_HEADERS_STRATEGY: framework
+    MAIL_HOST: ${MAIL_HOST:-mailpit}
+    MAIL_PORT: ${MAIL_PORT:-1025}
+    MAIL_USERNAME: ${MAIL_USERNAME:-}
+    MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+    MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-false}
+    MAIL_STARTTLS: ${MAIL_STARTTLS:-false}
+    MAIL_FROM: ${MAIL_FROM:-ShiftGrab <no-reply@shiftgrab.demo>}
+  deploy:
+    resources:
+      limits:
+        memory: 768m
+
+services:
+  edge:
+    image: nginx:1.29-alpine
+    restart: unless-stopped
+    logging: *logging
+    depends_on: [frontend, backend-1, backend-2, keycloak, grafana]
+    ports:
+      - "${EDGE_HTTP_PORT:-80}:80"
+      - "${EDGE_HTTPS_PORT:-443}:443"
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN}
+    volumes:
+      - ../nginx/upstreams.conf:/etc/nginx/conf.d/00-upstreams.conf:ro
+      - ../nginx/locations.conf:/etc/nginx/shiftgrab/locations.conf:ro
+      - ../nginx/proxy-headers.conf:/etc/nginx/shiftgrab/proxy-headers.conf:ro
+      - ../nginx/http.conf.template:/etc/nginx/shiftgrab/http.conf.template:ro
+      - ../nginx/https.conf.template:/etc/nginx/shiftgrab/https.conf.template:ro
+      - ../nginx/30-select-site.sh:/docker-entrypoint.d/30-select-site.sh:ro
+      - letsencrypt:/etc/letsencrypt:ro
+      - acme-challenge:/var/www/certbot:ro
+    deploy:
+      resources:
+        limits:
+          memory: 64m
+
+  # Let's Encrypt: obtains the first certificate (see runbook) and renews it twice a day when due.
+  certbot:
+    image: certbot/certbot:v4.2.0
+    restart: unless-stopped
+    logging: *logging
+    entrypoint: ["/bin/sh", "-c", "trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet; sleep 12h & wait $${!}; done"]
+    volumes:
+      - letsencrypt:/etc/letsencrypt
+      - acme-challenge:/var/www/certbot
+
+  frontend:
+    image: ${IMAGE_PREFIX:-ghcr.io/lukastgeorge}/shiftgrab-frontend:${SHIFTGRAB_VERSION:?set SHIFTGRAB_VERSION}
+    restart: unless-stopped
+    logging: *logging
+    environment:
+      API_URL: ""   # same origin: /api and /ws go through the edge proxy
+      KEYCLOAK_URL: ${SHIFTGRAB_PUBLIC_URL}/auth
+      KEYCLOAK_REALM: shiftgrab
+      KEYCLOAK_CLIENT_ID: shiftgrab-frontend
+      TIME_ZONE: Asia/Ho_Chi_Minh
+    deploy:
+      resources:
+        limits:
+          memory: 64m
+
+  # Two instances on purpose: proves statelessness (NFR-03) and the distributed lock across processes (ADR-0004).
+  backend-1: *backend
+  backend-2: *backend
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.8.2
+    restart: unless-stopped
+    logging: *logging
+    command: ["start", "--import-realm"]
+    depends_on:
+      postgres: { condition: service_healthy }
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?set KEYCLOAK_DB_PASSWORD}
+      KC_HOSTNAME: ${SHIFTGRAB_PUBLIC_URL}/auth
+      KC_HTTP_ENABLED: "true"          # TLS ends at the edge proxy
+      KC_HTTP_RELATIVE_PATH: /auth
+      KC_PROXY_HEADERS: xforwarded
+      KC_HEALTH_ENABLED: "true"
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?set KEYCLOAK_ADMIN_PASSWORD}
+      # Placeholders in the realm file
+      SHIFTGRAB_PUBLIC_URL: ${SHIFTGRAB_PUBLIC_URL:?set SHIFTGRAB_PUBLIC_URL}
+      SHIFTGRAB_DEMO_MANAGER_PASSWORD: ${DEMO_MANAGER_PASSWORD:?set DEMO_MANAGER_PASSWORD}
+      SHIFTGRAB_DEMO_STAFF_PASSWORD: ${DEMO_STAFF_PASSWORD:?set DEMO_STAFF_PASSWORD}
+      JAVA_OPTS_KC_HEAP: "-XX:MaxRAMPercentage=70"
+    volumes:
+      - ../keycloak/realm-shiftgrab.prod.json:/opt/keycloak/data/import/realm-shiftgrab.json:ro
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000 && echo -e 'GET /auth/health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q '\"UP\"' <&3"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 768m
+
+  postgres:
+    image: postgres:16.16-alpine
+    restart: unless-stopped
+    logging: *logging
+    environment:
+      POSTGRES_DB: shiftgrab
+      POSTGRES_USER: shiftgrab
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD}
+      KEYCLOAK_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?set KEYCLOAK_DB_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ../postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shiftgrab -d shiftgrab"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+  redis:
+    image: redis:8.10.3-alpine
+    restart: unless-stopped
+    logging: *logging
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "96mb", "--maxmemory-policy", "noeviction"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+
+  # Daily pg_dump of both databases, kept 7 days (SG-76, NFR-06). Unhealthy if the last success is > 26 h old.
+  backup:
+    image: postgres:16.16-alpine # same version as the server, so pg_dump/pg_restore always match it
+    restart: unless-stopped
+    logging: *logging
+    depends_on:
+      postgres: { condition: service_healthy }
+    entrypoint: ["sh", "/usr/local/bin/backup.sh"]
+    environment:
+      PGUSER: shiftgrab
+      PGPASSWORD: ${DB_PASSWORD:?set DB_PASSWORD}
+      TZ: ICT-7 # Vietnam time without tzdata (POSIX notation: the sign is inverted)
+      BACKUP_AT: ${BACKUP_AT:-02:30}
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-7}
+    volumes:
+      - ../backup/backup.sh:/usr/local/bin/backup.sh:ro
+      - ${BACKUP_DIR:-backups}:/backups
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /backups/.last-success && [ $$(( $$(date +%s) - $$(cat /backups/.last-success) )) -lt 93600 ]"]
+      interval: 5m
+      timeout: 5s
+      start_period: 2m
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+
+  # Monitoring (SG-72). Prometheus is internal; Grafana is served by the edge at /grafana/.
+  prometheus:
+    image: prom/prometheus:v3.15.1
+    restart: unless-stopped
+    logging: *logging
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=7d
+    volumes:
+      - ../prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus-data:/prometheus
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+  grafana:
+    image: grafana/grafana:13.2.5
+    restart: unless-stopped
+    logging: *logging
+    depends_on: [prometheus]
+    environment:
+      GF_SERVER_ROOT_URL: ${SHIFTGRAB_PUBLIC_URL}/grafana/
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?set GRAFANA_ADMIN_PASSWORD}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      # Read-only dashboards for visitors of the demo when set to true; nothing can be changed anonymously.
+      GF_AUTH_ANONYMOUS_ENABLED: ${GRAFANA_ANONYMOUS:-false}
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+    volumes:
+      - ../grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    deploy:
+      resources:
+        limits:
+          memory: 192m
+
+  # Catches e-mails until a real SMTP relay is configured (MAIL_HOST). Its web UI is not published.
+  mailpit:
+    image: axllent/mailpit:v1.34.0
+    restart: unless-stopped
+    logging: *logging
+    deploy:
+      resources:
+        limits:
+          memory: 64m
+
+volumes:
+  postgres-data:
+  redis-data:
+  letsencrypt:
+  acme-challenge:
+  prometheus-data:
+  grafana-data:
+  backups:

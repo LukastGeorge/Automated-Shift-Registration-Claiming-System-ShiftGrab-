@@ -1,6 +1,8 @@
 server:
   port: ${SERVER_PORT:8080}
   shutdown: graceful
+  # Behind the edge proxy in production: trust X-Forwarded-* for the original scheme and host (SG-71).
+  forward-headers-strategy: ${SERVER_FORWARD_HEADERS_STRATEGY:none}
 
 spring:
   application:
@@ -56,11 +58,21 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info,metrics,prometheus
   endpoint:
     health:
       probes:
         enabled: true
+  metrics:                    # SG-72
+    tags:
+      application: shiftgrab-backend
+    distribution:
+      # Histogram buckets so Prometheus can compute p95/p99 across both instances (NFR-02: claim p95 < 300 ms).
+      percentiles-histogram:
+        http.server.requests: true
+        shiftgrab.lock.wait: true
+      slo:
+        http.server.requests: 100ms,300ms,1s
 
 shiftgrab:
   time-zone: Asia/Ho_Chi_Minh

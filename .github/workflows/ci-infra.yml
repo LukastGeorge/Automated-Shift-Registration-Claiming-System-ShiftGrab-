@@ -1,0 +1,49 @@
+name: CI - Infrastructure
+
+# SG-74: the deployment is code too. Shell scripts are linted, the Compose files and the Prometheus
+# configuration are validated before they can reach a server.
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - "infra/**"
+      - "frontend/docker/**"
+      - ".github/workflows/ci-infra.yml"
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - "infra/**"
+      - "frontend/docker/**"
+      - ".github/workflows/ci-infra.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Lint shell scripts (ShellCheck)
+        run: |
+          docker run --rm -v "$PWD:/mnt" -w /mnt koalaman/shellcheck:v0.11.0 --shell=sh \
+            infra/scripts/*.sh infra/backup/*.sh infra/nginx/*.sh infra/postgres/init/*.sh frontend/docker/*.sh
+
+      - name: Validate Compose files
+        run: |
+          docker compose -f infra/docker/docker-compose.yml --env-file infra/docker/.env.example config --quiet
+          docker compose -f infra/docker/docker-compose.prod.yml --env-file infra/docker/.env.prod.example config --quiet
+
+      - name: Validate Prometheus configuration and alert rules
+        run: |
+          docker run --rm --entrypoint promtool -v "$PWD/infra/prometheus:/etc/prometheus:ro" \
+            prom/prometheus:v3.15.1 check config /etc/prometheus/prometheus.yml
+
+      - name: Validate JSON (Grafana dashboard, Keycloak realms)
+        run: |
+          for f in infra/grafana/dashboards/*.json infra/keycloak/*.json; do
+            python3 -m json.tool "$f" > /dev/null && echo "ok: $f"
+          done

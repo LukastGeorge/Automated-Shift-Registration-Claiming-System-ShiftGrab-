@@ -43,6 +43,12 @@ A story is done when:
 From `frontend/` with Node.js 24: `npm ci`, `npm run lint`, `npx ng test --watch=false --coverage`, `npm run build`.
 The test step fails below **70% lines, statements and functions / 60% branches** (thresholds in `angular.json`); the HTML report is under `frontend/coverage/`. CI (`ci-frontend.yml`) runs the same steps and publishes the numbers in the job summary and the report as the `frontend-coverage` artifact.
 
+### Security checks and branch protection
+
+`security.yml` runs on every PR, on pushes to `main`/`develop` and weekly: **CodeQL** (security-extended queries) for Java and TypeScript, and **Trivy** on the Dockerfiles and the built images. A **fixable CRITICAL** vulnerability fails the build; HIGH ones are reported in the repository's Security tab. Fix by updating the base image or the dependency, never by silencing the scanner.
+
+`main` and `develop` require a pull request and the three security checks (`codeql (java-kotlin)`, `codeql (javascript-typescript)`, `trivy (Dockerfiles and images)`). The backend and frontend CI checks are not marked *required* because they only run when their folder changes (path filters), and a required check that never runs would block unrelated PRs; they must still be green before merging.
+
 ## Versioning
 
 Semantic Versioning. Release notes are kept in `CHANGELOG.md`.

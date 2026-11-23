@@ -1,0 +1,137 @@
+{
+  "uid": "shiftgrab-overview",
+  "title": "ShiftGrab overview",
+  "description": "Health of both backend instances, claim traffic and latency against the NFR-02 SLO (SG-72).",
+  "tags": ["shiftgrab"],
+  "timezone": "browser",
+  "refresh": "10s",
+  "schemaVersion": 39,
+  "time": { "from": "now-1h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Backend instances up",
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 5 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "refId": "A", "expr": "sum(up{job=\"shiftgrab-backend\"})" }],
+      "fieldConfig": {
+        "defaults": {
+          "min": 0,
+          "max": 2,
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "red", "value": null }, { "color": "orange", "value": 1 }, { "color": "green", "value": 2 }
+          ] }
+        },
+        "overrides": []
+      },
+      "options": { "colorMode": "background", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] } }
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "API requests per second, by status",
+      "gridPos": { "x": 6, "y": 0, "w": 18, "h": 5 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{
+        "refId": "A",
+        "expr": "sum by (status) (rate(http_server_requests_seconds_count{job=\"shiftgrab-backend\", uri=~\"/api/.*\"}[1m]))",
+        "legendFormat": "{{status}}"
+      }],
+      "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] }
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Claim latency p95 / p99 (SLO: p95 < 300 ms)",
+      "gridPos": { "x": 0, "y": 5, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{job=\"shiftgrab-backend\", method=\"POST\", uri=\"/api/v1/shifts/{shiftId}/registrations\"}[5m])))",
+          "legendFormat": "p95"
+        },
+        {
+          "refId": "B",
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(http_server_requests_seconds_bucket{job=\"shiftgrab-backend\", method=\"POST\", uri=\"/api/v1/shifts/{shiftId}/registrations\"}[5m])))",
+          "legendFormat": "p99"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": { "thresholdsStyle": { "mode": "line" } },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 0.3 }] }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Claim outcomes per minute",
+      "description": "CLAIMED, SHIFT_FULL, CLAIM_BUSY, LOCK_UNAVAILABLE... A flash sale shows a few CLAIMED and many SHIFT_FULL.",
+      "gridPos": { "x": 12, "y": 5, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{
+        "refId": "A",
+        "expr": "sum by (result) (increase(shiftgrab_claims_total[1m]))",
+        "legendFormat": "{{result}}"
+      }],
+      "fieldConfig": { "defaults": { "custom": { "stacking": { "mode": "normal" }, "drawStyle": "bars" } }, "overrides": [] }
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Distributed lock wait p95, by result",
+      "gridPos": { "x": 0, "y": 13, "w": 12, "h": 7 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{
+        "refId": "A",
+        "expr": "histogram_quantile(0.95, sum by (le, result) (rate(shiftgrab_lock_wait_seconds_bucket[5m])))",
+        "legendFormat": "{{result}}"
+      }],
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] }
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "5xx error ratio",
+      "gridPos": { "x": 12, "y": 13, "w": 12, "h": 7 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{
+        "refId": "A",
+        "expr": "sum(rate(http_server_requests_seconds_count{job=\"shiftgrab-backend\", status=~\"5..\"}[5m])) / clamp_min(sum(rate(http_server_requests_seconds_count{job=\"shiftgrab-backend\"}[5m])), 1e-9)",
+        "legendFormat": "5xx"
+      }],
+      "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0 }, "overrides": [] }
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "JVM heap used, per instance",
+      "gridPos": { "x": 0, "y": 20, "w": 12, "h": 7 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{
+        "refId": "A",
+        "expr": "sum by (instance) (jvm_memory_used_bytes{job=\"shiftgrab-backend\", area=\"heap\"})",
+        "legendFormat": "{{instance}}"
+      }],
+      "fieldConfig": { "defaults": { "unit": "bytes" }, "overrides": [] }
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Database connections in use, per instance",
+      "gridPos": { "x": 12, "y": 20, "w": 12, "h": 7 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{
+        "refId": "A",
+        "expr": "sum by (instance) (hikaricp_connections_active{job=\"shiftgrab-backend\"})",
+        "legendFormat": "{{instance}}"
+      }],
+      "fieldConfig": { "defaults": { "min": 0 }, "overrides": [] }
+    }
+  ]
+}
