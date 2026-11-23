@@ -95,9 +95,17 @@ jobs:
               --format sarif --output "/out/$name.sarif" "shiftgrab-$name:scan"
           done
 
-      - name: Upload Trivy results
-        if: always() && hashFiles('sarif/*.sarif') != ''
+      # One upload per image: code scanning accepts one SARIF run per category.
+      - name: Upload Trivy results (backend)
+        if: always() && hashFiles('sarif/backend.sarif') != ''
         uses: github/codeql-action/upload-sarif@v4
         with:
-          sarif_file: sarif
-          category: trivy
+          sarif_file: sarif/backend.sarif
+          category: trivy-backend
+
+      - name: Upload Trivy results (frontend)
+        if: always() && hashFiles('sarif/frontend.sarif') != ''
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: sarif/frontend.sarif
+          category: trivy-frontend
