@@ -35,6 +35,20 @@ const api = async (token, method, path, body, headers = {}) => {
   return { status: res.status, body: text && text.startsWith('{') ? JSON.parse(text) : text };
 };
 
+// On a first start Keycloak reports ready before the realm import finishes (seen: ~25 s), so a smoke test right
+// after a deployment waits for the realm instead of failing.
+async function waitForRealm(timeoutMs = 180_000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    try {
+      if ((await fetch(`${BASE}/auth/realms/shiftgrab/.well-known/openid-configuration`)).ok) return;
+    } catch { /* not reachable yet */ }
+    await new Promise((r) => setTimeout(r, 3000));
+  }
+  throw new Error('realm not available');
+}
+await waitForRealm();
+
 const home = await fetch(`${BASE}/manage/shifts`);
 check(home.status === 200 && (await home.text()).includes('<app-root'), 'web app served by the edge (deep link)');
 const config = await (await fetch(`${BASE}/config.json`)).json();

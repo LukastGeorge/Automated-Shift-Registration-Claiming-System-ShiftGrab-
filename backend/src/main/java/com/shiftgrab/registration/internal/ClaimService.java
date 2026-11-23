@@ -6,6 +6,8 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.util.Map;
 
+import io.micrometer.core.instrument.MeterRegistry;
+
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -44,10 +46,12 @@ public class ClaimService {
     private final RegistrationRules rules;
     private final Clock clock;
     private final ZoneId zone;
+    private final MeterRegistry meters;
 
     ClaimService(ShiftSlots shifts, RegistrationRepository registrations, CurrentUserService currentUser,
             ShiftLockProvider locks, TransactionTemplate transaction, ApplicationEventPublisher events,
-            RegistrationRules rules, Clock clock, ZoneId organisationZone) {
+            RegistrationRules rules, Clock clock, ZoneId organisationZone, MeterRegistry meters) {
+        this.meters = meters;
         this.shifts = shifts;
         this.registrations = registrations;
         this.currentUser = currentUser;
@@ -59,7 +63,22 @@ public class ClaimService {
         this.zone = organisationZone;
     }
 
+    /**
+     * Counts every outcome in {@code shiftgrab.claims{result}} (CLAIMED or the error code), so a dashboard shows a
+     * flash sale as "5 claimed, 95 SHIFT_FULL" and a spike of CLAIM_BUSY or LOCK_UNAVAILABLE stands out (SG-72).
+     */
     public Registration claim(long shiftId) {
+        try {
+            Registration registration = claimShift(shiftId);
+            meters.counter("shiftgrab.claims", "result", "CLAIMED").increment();
+            return registration;
+        } catch (BusinessException e) {
+            meters.counter("shiftgrab.claims", "result", e.code().name()).increment();
+            throw e;
+        }
+    }
+
+    private Registration claimShift(long shiftId) {
         UserAccount staff = currentUser.currentUser();
         rejectFullShiftWithoutLocking(staff.id(), shiftId);
         return locks.executeWithLocks(ShiftLockProvider.claimKeys(staff.id(), shiftId),

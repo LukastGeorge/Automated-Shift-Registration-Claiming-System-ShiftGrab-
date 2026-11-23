@@ -1,0 +1,36 @@
+# Alert rules (SG-72), visible in Prometheus and Grafana. Routing them to e-mail/chat (Alertmanager) is a
+# deliberate next step, not part of v1.
+groups:
+  - name: shiftgrab
+    rules:
+      - alert: BackendInstanceDown
+        expr: up{job="shiftgrab-backend"} == 0
+        for: 1m
+        labels: { severity: critical }
+        annotations:
+          summary: "Backend {{ $labels.instance }} is not answering"
+          description: "The edge still serves traffic with the other instance, but there is no redundancy left."
+
+      - alert: HighServerErrorRate
+        expr: |
+          sum(rate(http_server_requests_seconds_count{job="shiftgrab-backend", status=~"5.."}[5m]))
+            / clamp_min(sum(rate(http_server_requests_seconds_count{job="shiftgrab-backend"}[5m])), 1e-9) > 0.05
+        for: 5m
+        labels: { severity: warning }
+        annotations:
+          summary: "More than 5% of API requests fail with a 5xx"
+
+      - alert: ClaimLatencyAboveSlo
+        expr: |
+          histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{
+            job="shiftgrab-backend", method="POST", uri="/api/v1/shifts/{shiftId}/registrations"}[5m]))) > 0.3
+        for: 5m
+        labels: { severity: warning }
+        annotations:
+          summary: "Claim p95 latency above 300 ms (NFR-02)"
+
+      - alert: ClaimingUnavailable
+        expr: sum(increase(shiftgrab_claims_total{result="LOCK_UNAVAILABLE"}[5m])) > 0
+        labels: { severity: critical }
+        annotations:
+          summary: "Claims are refused because Redis (the lock service) is unreachable"

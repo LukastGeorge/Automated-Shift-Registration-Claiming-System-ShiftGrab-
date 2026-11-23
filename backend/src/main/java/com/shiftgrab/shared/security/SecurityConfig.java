@@ -37,6 +37,9 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/actuator/health/**", "/actuator/info").permitAll()
+                        // Scraped by Prometheus on the private network; the edge proxy answers 404 for /actuator
+                        // from the internet (SG-71/72).
+                        .requestMatchers("/actuator/prometheus").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         // WebSocket handshake: browsers cannot send a bearer header here; the token is checked on
                         // the STOMP CONNECT frame instead (realtime module, SG-40).
