@@ -28,11 +28,13 @@ esac
 compose exec -T backup test -f "/backups/$FILE" || { echo "No such backup: $FILE" >&2; exit 1; }
 
 echo "Stopping $SERVICES"
+# shellcheck disable=SC2086 # word splitting wanted: SERVICES may name two services
 compose stop $SERVICES
 echo "Restoring $FILE into $DB"
 # --clean --if-exists drops each object before recreating it; one transaction: all or nothing.
 compose exec -T backup pg_restore --host=postgres --username=shiftgrab --dbname="$DB" \
     --clean --if-exists --no-owner --single-transaction "/backups/$FILE"
 echo "Starting $SERVICES"
+# shellcheck disable=SC2086 # word splitting wanted: SERVICES may name two services
 compose start $SERVICES
 echo "Restored $DB from $FILE"

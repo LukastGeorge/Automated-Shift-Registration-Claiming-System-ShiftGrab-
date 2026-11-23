@@ -12,6 +12,18 @@ Internet ─▶ edge nginx :80/:443 ─┬─ /        ─▶ frontend   (static
 
 Only the edge publishes ports. `/actuator` and the Keycloak admin console are not reachable from the internet.
 
+## 0. Prepare the server / Chuẩn bị máy chủ (SG-74)
+
+A VPS with ~4 GB RAM and Ubuntu 24.04. From your laptop, create a key for the deploy user (`ssh-keygen -t ed25519 -f ~/.ssh/shiftgrab_deploy`), then as root on the server:
+
+```bash
+curl -fsSLO https://raw.githubusercontent.com/LukastGeorge/Automated-Shift-Registration-Claiming-System-ShiftGrab-/main/infra/scripts/provision-vps.sh
+less provision-vps.sh          # read it before running it as root
+sh provision-vps.sh "$(cat shiftgrab_deploy.pub)"
+```
+
+It installs security updates (and turns on automatic ones), sets the time zone, adds 2 GB swap, installs Docker from Docker's repository, creates the `deploy` user (SSH key only, member of `docker`, no sudo), **disables root and password logins**, opens only **22/80/443** with `ufw`, and enables **fail2ban** for SSH. Keep the root session open until `ssh deploy@<server>` works in a second terminal. Note: Docker writes its own firewall rules for published ports, which `ufw` does not filter; that is why only the edge proxy publishes ports.
+
 ## 1. Configure / Cấu hình
 
 ```bash
@@ -104,7 +116,12 @@ node infra/scripts/smoke-test.mjs http://localhost:8088 <manager-password> <staf
 docker compose -f infra/docker/docker-compose.prod.yml --env-file <file> down -v   # -v deletes the test data
 ```
 
+## Infrastructure CI / CI cho hạ tầng
+
+`ci-infra.yml` runs when `infra/` changes: ShellCheck on every script, `docker compose config` on both Compose files, `promtool` on the Prometheus configuration and alert rules, JSON syntax of the dashboard and realms.
+
 ## 🇻🇳 Tóm tắt
+- **Chuẩn bị máy chủ:** chạy `provision-vps.sh` một lần với quyền root. Kịch bản tạo user `deploy` chỉ đăng nhập được bằng SSH key, tắt đăng nhập root và đăng nhập bằng mật khẩu, bật tường lửa (chỉ mở 22/80/443) và fail2ban, tự cài bản vá bảo mật, cài Docker và thêm swap.
 - Stack production gồm 9 container trên một VPS. Chỉ có **edge nginx** mở cổng ra ngoài: nó lo TLS, cân bằng tải giữa 2 backend, chuyển tiếp WebSocket, và chuyển `/auth` sang Keycloak.
 - **Bí mật** chỉ nằm trong `.env.prod` (`chmod 600`), không bao giờ commit.
 - **Chứng chỉ TLS:** lần đầu chạy certbot thủ công, sau đó tự gia hạn.
