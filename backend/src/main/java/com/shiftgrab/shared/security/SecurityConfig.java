@@ -47,7 +47,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/v1/shifts").hasRole("MANAGER")
                         .requestMatchers(HttpMethod.PATCH, "/api/v1/shifts/*").hasRole("MANAGER")
                         .requestMatchers(HttpMethod.POST, "/api/v1/shifts/*/cancel").hasRole("MANAGER")
-                        .requestMatchers("/api/v1/shift-templates/**", "/api/v1/users/**", "/api/v1/audit-log/**")
+                        .requestMatchers("/api/v1/shift-templates/**", "/api/v1/users/**", "/api/v1/audit-log/**",
+                                "/api/v1/reports/**")
                         .hasRole("MANAGER")
                         .requestMatchers(HttpMethod.POST, "/api/v1/shifts/*/registrations").hasRole("STAFF")
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/registrations/*").hasRole("STAFF")
