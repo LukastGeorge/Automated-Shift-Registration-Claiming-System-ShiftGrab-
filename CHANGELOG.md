@@ -4,6 +4,17 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [0.6.0] - 2026-11-23 — Sprint 6: Reports and audit screens
+
+### Added
+- Hours and pay report per staff member for a period: ended shifts only, a shift counts wholly on its start day (organisation zone), staff without shifts listed with zeros, pay at the snapshotted rate (BR-10), totals row ([#31](../../issues/31), [#103](../../pull/103)).
+- Report export as CSV (UTF-8 BOM for Excel, formula injection neutralised) and XLSX (numeric cells with formats) in Vietnamese or English ([#32](../../issues/32), [#104](../../pull/104)).
+- Manager screens: report with downloads named by the server, audit log with actions in words, change summaries and filters by action, days and author ([#33](../../issues/33), [#105](../../pull/105)).
+
+### Changed
+- CORS exposes `Content-Disposition` so the web app can read download file names.
+- Migration V7: index for the report; removes two `audit_log` indexes that duplicated V1's.
+
 ## [0.5.0] - 2026-11-22 — Sprint 5: Real-time, notifications and audit
 
 ### Added

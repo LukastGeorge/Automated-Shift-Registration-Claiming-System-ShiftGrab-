@@ -35,6 +35,11 @@ export const routes: Routes = [
             loadComponent: () => import('./features/manager/templates.page').then((m) => m.TemplatesPage),
           },
           { path: 'staff', loadComponent: () => import('./features/manager/staff.page').then((m) => m.StaffPage) },
+          {
+            path: 'reports',
+            loadComponent: () => import('./features/manager/reports.page').then((m) => m.ReportsPage),
+          },
+          { path: 'audit', loadComponent: () => import('./features/manager/audit.page').then((m) => m.AuditPage) },
           { path: '', pathMatch: 'full', redirectTo: 'shifts' },
         ],
       },

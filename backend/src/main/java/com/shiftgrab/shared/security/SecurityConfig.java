@@ -47,7 +47,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/v1/shifts").hasRole("MANAGER")
                         .requestMatchers(HttpMethod.PATCH, "/api/v1/shifts/*").hasRole("MANAGER")
                         .requestMatchers(HttpMethod.POST, "/api/v1/shifts/*/cancel").hasRole("MANAGER")
-                        .requestMatchers("/api/v1/shift-templates/**", "/api/v1/users/**", "/api/v1/audit-log/**")
+                        .requestMatchers("/api/v1/shift-templates/**", "/api/v1/users/**", "/api/v1/audit-log/**",
+                                "/api/v1/reports/**")
                         .hasRole("MANAGER")
                         .requestMatchers(HttpMethod.POST, "/api/v1/shifts/*/registrations").hasRole("STAFF")
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/registrations/*").hasRole("STAFF")
@@ -83,7 +84,9 @@ public class SecurityConfig {
         config.setAllowedOrigins(allowedOrigins);
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("Authorization", "Content-Type", "If-Match"));
-        config.setExposedHeaders(List.of("Location", "ETag", "Retry-After"));
+        // Content-Disposition carries the file name of report downloads (SG-51); browsers hide it from scripts
+        // unless it is exposed here.
+        config.setExposedHeaders(List.of("Location", "ETag", "Retry-After", "Content-Disposition"));
         config.setMaxAge(3600L);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/api/**", config);

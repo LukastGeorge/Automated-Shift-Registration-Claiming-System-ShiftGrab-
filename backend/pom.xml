@@ -13,7 +13,7 @@
 
     <groupId>com.shiftgrab</groupId>
     <artifactId>shiftgrab-backend</artifactId>
-    <version>0.5.0</version>
+    <version>0.6.0</version>
     <name>ShiftGrab Backend</name>
     <description>Shift registration and claiming system — modular monolith</description>
 
@@ -25,6 +25,7 @@
         <jacoco.version>0.8.16</jacoco.version>
         <redisson.version>4.8.0</redisson.version>
         <shedlock.version>7.11.0</shedlock.version>
+        <poi.version>6.0.0</poi.version>
         <!-- Quality gate (project plan: coverage >= 70%) -->
         <jacoco.line.minimum>0.70</jacoco.line.minimum>
         <jacoco.branch.minimum>0.60</jacoco.branch.minimum>
@@ -105,6 +106,13 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-websocket</artifactId>
+        </dependency>
+
+        <!-- Report export to Excel (SG-51) -->
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>${poi.version}</version>
         </dependency>
 
         <!-- Notifications (SG-41, SG-42) -->

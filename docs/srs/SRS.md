@@ -131,7 +131,7 @@ Each story has acceptance criteria (AC) in Given/When/Then form. IDs `SG-xx` mat
 
 ### Epic E5 — Reporting & audit
 
-**SG-50 — Hours & pay report.** AC: for a date range, per staff member: number of shifts, total hours, total pay (BR-10); totals row.
+**SG-50 — Hours & pay report.** AC: for a date range, per staff member: number of shifts, total hours, total pay (BR-10); totals row. *Clarified in Sprint 6:* only shifts that have ended count; a shift belongs wholly to the day it starts on (organisation time zone), so an overnight shift is never split between two periods; staff without shifts are listed with zeros; periods are whole days, both ends included, at most 366 days; pay is rounded to whole VND per staff member and the totals row is the sum of the rows.
 **SG-51 — Export.** AC: download the report as CSV and XLSX.
 **SG-52 — Audit log.** AC: every create/edit/cancel/claim records actor, action, target, timestamp, before/after summary; managers can filter by actor, action and date. *Clarified in Sprint 5:* each entry is written in the same transaction as the change it records, so a change never exists without its entry and a rolled-back change leaves none. The log is append-only, enforced by a database trigger (NFR-10). Also recorded: template creation, shift generation, hourly-rate changes, and the registrations cancelled together with a shift (with the affected staff).
 
