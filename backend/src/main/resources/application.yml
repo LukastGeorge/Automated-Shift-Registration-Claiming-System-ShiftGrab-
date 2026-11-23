@@ -14,6 +14,9 @@ spring:
     password: ${DB_PASSWORD:shiftgrab}
     hikari:
       maximum-pool-size: ${DB_POOL_SIZE:10}
+      # SG-81: fail fast (503 SERVICE_BUSY + Retry-After) instead of queueing for the default 30 s.
+      # Milliseconds: Hikari binds a plain long here, not a Duration.
+      connection-timeout: ${DB_CONNECTION_TIMEOUT_MS:1000}
   jpa:
     open-in-view: false
     hibernate:
@@ -95,3 +98,7 @@ shiftgrab:
     redis-address: ${REDIS_ADDRESS:redis://localhost:6379}
     wait-time: 3s
     lease-time: 10s
+  claims:                     # SG-81, ADR-0004 revision
+    lock-timeout: ${CLAIM_LOCK_TIMEOUT:1s}          # longest wait for the shift row before CLAIM_BUSY
+    statement-timeout: ${CLAIM_STATEMENT_TIMEOUT:2s}
+    sold-out-memo: 1s                               # how long an instance trusts "shift is full" (0s = off)

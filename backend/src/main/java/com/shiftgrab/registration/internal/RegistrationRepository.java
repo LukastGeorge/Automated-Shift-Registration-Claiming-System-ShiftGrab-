@@ -29,6 +29,20 @@ class RegistrationRepository {
         this.jdbc = jdbc;
     }
 
+    /**
+     * SG-81: bounds how long this claim transaction may wait for the shift row and run, then fail fast.
+     * {@code set_config(..., true)} is {@code SET LOCAL}: it ends with the transaction, so the setting never leaks
+     * to the next request that borrows this pooled connection (and it stays correct behind PgBouncer in
+     * transaction mode).
+     */
+    void limitTransactionWaits(Duration lockTimeout, Duration statementTimeout) {
+        jdbc.sql("SELECT set_config('lock_timeout', :lock, true), set_config('statement_timeout', :statement, true)")
+                .param("lock", lockTimeout.toMillis() + "ms")
+                .param("statement", statementTimeout.toMillis() + "ms")
+                .query((rs, row) -> null)
+                .list();
+    }
+
     /** ADR-0005 layer 3 applies here: uq_registrations_active (BR-02) and ex_registrations_no_overlap (BR-03). */
     Registration insert(long shiftId, long userId, Instant startAt, Instant endAt, BigDecimal hourlyRate,
             Instant now) {

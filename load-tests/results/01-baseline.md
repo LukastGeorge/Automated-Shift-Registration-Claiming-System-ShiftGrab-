@@ -7,7 +7,7 @@
 | | |
 |---|---|
 | Date | 2026-11-23 |
-| Build | `0.7.0` images (develop `2c43576`), production compose: edge nginx → 2 backends, PostgreSQL 18, Redis, Keycloak |
+| Build | `0.7.0` images (develop `2c43576`), production compose: edge nginx → 2 backends, PostgreSQL 16, Redis, Keycloak |
 | Host | one laptop (Docker Desktop, WSL2) running the whole stack **and** k6 — absolute numbers are pessimistic |
 | Script | [`flash-sale.js`](../flash-sale.js) — 1000 VUs × 1 claim, 10 shifts × 5 slots, 100 VUs per shift, all at once |
 

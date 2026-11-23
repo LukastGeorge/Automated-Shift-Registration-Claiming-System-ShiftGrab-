@@ -24,8 +24,8 @@ class InMemoryShiftLockProviderTests {
 
     @Test
     void runsTaskAndReleases() {
-        assertThat(locks.executeWithLocks(ShiftLockProvider.claimKeys(1, 2), () -> "done")).isEqualTo("done");
-        assertThat(locks.executeWithLocks(ShiftLockProvider.claimKeys(1, 2), () -> "again")).isEqualTo("again");
+        assertThat(locks.executeWithLocks(List.of("user:1", "shift:2"), () -> "done")).isEqualTo("done");
+        assertThat(locks.executeWithLocks(List.of("user:1", "shift:2"), () -> "again")).isEqualTo("again");
     }
 
     @Test
@@ -44,7 +44,7 @@ class InMemoryShiftLockProviderTests {
         }));
         held.await(5, TimeUnit.SECONDS);
 
-        assertThatThrownBy(() -> locks.executeWithLocks(ShiftLockProvider.claimKeys(9, 1), () -> "never"))
+        assertThatThrownBy(() -> locks.executeWithLocks(List.of("user:9", "shift:1"), () -> "never"))
                 .isInstanceOfSatisfying(BusinessException.class,
                         e -> assertThat(e.code()).isEqualTo(ErrorCode.CLAIM_BUSY));
         // user:9 was acquired before shift:1 timed out and must have been released

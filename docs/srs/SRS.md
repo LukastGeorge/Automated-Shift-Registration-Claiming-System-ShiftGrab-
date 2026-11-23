@@ -116,6 +116,7 @@ Each story has acceptance criteria (AC) in Given/When/Then form. IDs `SG-xx` mat
 - AC6: Given I already hold this shift, then `409 ALREADY_REGISTERED` (idempotent double-click).
 - AC7: **Given N concurrent claims on a shift with M slots (N > M), across multiple backend instances, then exactly M succeed and the rest get `SHIFT_FULL`.**
 - *Clarified in Sprint 3:* if a request cannot get its locks within 3 s it receives `503 CLAIM_BUSY` with `Retry-After` (it is *not* told the shift is full). If the lock service (Redis) is down, claiming fails closed with `503 LOCK_UNAVAILABLE`; all other features keep working. For BR-04, a shift crossing a week boundary counts its hours in each ISO week it actually overlaps. The weekly limit (40 h) and the cancel deadline (24 h) are deployment settings.
+- *Clarified in Sprint 8 (SG-81, ADR-0004 revision):* claims on the same shift queue inside the database for at most 1 s; beyond that the answer is `503 CLAIM_BUSY` (`Retry-After: 1`). If a manager changes the shift while it is being claimed, the claim is checked again against the changed shift, and the registration always carries the shift's current times; if the shift keeps changing, the answer is `409 SHIFT_CHANGED`. Right after a slot is freed, other instances may still answer `SHIFT_FULL` for up to 1 s; a slot is never granted wrongly.
 
 **SG-31 — Cancel my registration.** AC: before the deadline → `204`, slot released, shift back to `OPEN` (BR-11); after → `409 CANCEL_DEADLINE_PASSED`.
 
@@ -140,7 +141,7 @@ Each story has acceptance criteria (AC) in Given/When/Then form. IDs `SG-xx` mat
 | ID | Category | Requirement |
 |---|---|---|
 | NFR-01 | Correctness | Zero overbooking and zero overlap violations under any concurrency (verified by automated concurrency tests and k6). |
-| NFR-02 | Performance | Claim endpoint p95 < 300 ms at 500 requests/s on the target VPS (2 backend instances). |
+| NFR-02 | Performance | Claim endpoint p95 < 300 ms at 500 requests/s on the target VPS (2 backend instances). *Clarified in Sprint 8:* this is the steady-load target and is verified on the VPS. The flash-sale burst (1000 claims at the same instant, SG-80) has its own target: exactly the available slots succeed, 0 errors, p95 < 2 s. |
 | NFR-03 | Scalability | Backend is stateless; adding instances requires no code change. |
 | NFR-04 | Security | OAuth2/OIDC with JWT; role-based authorisation; OWASP Top 10 mitigations; secrets only via environment variables; HTTPS only in production. |
 | NFR-05 | Availability | Health checks and automatic container restart; zero-downtime is not required in v1. |
@@ -158,6 +159,8 @@ All API errors use RFC 7807 `application/problem+json` with an extra `code` fiel
 Shift management codes (Sprint 2): `SHIFT_CANCELLED` (409), `SHIFT_ALREADY_STARTED` (409), `TEMPLATE_NOT_FOUND` (404), `USER_NOT_FOUND` (404), `PRECONDITION_REQUIRED` (428, `If-Match` missing).
 
 Registrations (Sprint 3): `REGISTRATION_NOT_FOUND` (404, also for another user's registration). Claiming under load (Sprint 3): `CLAIM_BUSY` (503, `Retry-After: 1`), `LOCK_UNAVAILABLE` (503, `Retry-After: 5`).
+
+Sprint 8 (SG-81): `SHIFT_CHANGED` (409, the shift was changed while being claimed; review it, then claim again), `SERVICE_BUSY` (503, `Retry-After: 1`, no database connection free within 1 s; any endpoint).
 
 Generic codes cover every other error so that clients can always branch on `code`: `MALFORMED_REQUEST` (400), `UNAUTHORIZED` (401), `FORBIDDEN` (403), `NOT_FOUND` (404), `METHOD_NOT_ALLOWED` (405), `DATA_CONFLICT` (409, unmapped database constraint), `INTERNAL_ERROR` (500, no internal details exposed). `VALIDATION_FAILED` adds `errors: [{field, message}]`.
 

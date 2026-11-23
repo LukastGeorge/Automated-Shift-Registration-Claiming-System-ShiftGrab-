@@ -28,10 +28,14 @@ public enum ErrorCode {
     PRECONDITION_REQUIRED(HttpStatus.PRECONDITION_REQUIRED, "If-Match header required"),
 
     REGISTRATION_NOT_FOUND(HttpStatus.NOT_FOUND, "Registration not found"),
+    // SG-81: a manager changed the shift while it was being claimed; review it before trying again
+    SHIFT_CHANGED(HttpStatus.CONFLICT, "Shift was changed while claiming"),
 
     // Claiming under load (Sprint 3, ADR-0004): both are temporary, so they carry Retry-After
     CLAIM_BUSY(HttpStatus.SERVICE_UNAVAILABLE, "Too many concurrent requests", 1),
     LOCK_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "Claiming is temporarily unavailable", 5),
+    // SG-81: no database connection within Hikari's short connectionTimeout; fail fast instead of queueing
+    SERVICE_BUSY(HttpStatus.SERVICE_UNAVAILABLE, "Service is busy", 1),
 
     // Generic codes so that every error, including framework ones, carries a code
     MALFORMED_REQUEST(HttpStatus.BAD_REQUEST, "Malformed request"),

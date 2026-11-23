@@ -30,9 +30,11 @@ public class CancellationService {
     private final ApplicationEventPublisher events;
     private final RegistrationRules rules;
     private final Clock clock;
+    private final SoldOutShifts soldOut;
 
     CancellationService(RegistrationRepository registrations, ShiftSlots shifts, CurrentUserService currentUser,
-            ApplicationEventPublisher events, RegistrationRules rules, Clock clock) {
+            ApplicationEventPublisher events, RegistrationRules rules, Clock clock, SoldOutShifts soldOut) {
+        this.soldOut = soldOut;
         this.registrations = registrations;
         this.shifts = shifts;
         this.currentUser = currentUser;
@@ -62,6 +64,7 @@ public class CancellationService {
         }
         registrations.cancel(registrationId, userId, now).ifPresent(cancelled -> {
             shifts.releaseSlot(cancelled.shiftId());
+            soldOut.forget(cancelled.shiftId()); // SG-81: the freed slot is claimable at once on this instance
             events.publishEvent(new RegistrationCancelled(cancelled.id(), cancelled.shiftId(), userId));
         });
     }

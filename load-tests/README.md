@@ -30,3 +30,9 @@ docker compose -f infra/docker/docker-compose.prod.yml exec -T postgres \
 | Run | p95 claim | CLAIM_BUSY | Correct (50 / 0 overbooking) |
 |---|---:|---:|---|
 | [01 baseline](results/01-baseline.md) | 6 120 ms | 138 | ✅ |
+| [09 after SG-81 tuning](results/02-tuning.md) (runs 02–10 in the same report) | 3 557 ms on this laptop; server-side max 1 260 ms | **0** | ✅ |
+
+The script warms the backends up (200 claims on a separate shift) and opens the app for every user (`GET /me`)
+before the sale, because production servers are warm and staff wait on the page. Measure on a fresh stack after
+a short settle period, and preferably with k6 on another machine: on one laptop, k6 competes with the stack for
+CPU and the client-side tail varies ±50 % between runs.

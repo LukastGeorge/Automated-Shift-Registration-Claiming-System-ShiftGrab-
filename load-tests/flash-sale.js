@@ -70,6 +70,30 @@ export function setup() {
       tokens.push(res.json('access_token'));
     }
   }
+
+  // Everyone opens the app before the countdown ends, like real staff waiting on the page: the SPA's first
+  // GET /me creates their user row. Without this, every claim would also pay a first-login INSERT that no real
+  // flash sale has (found in run 02).
+  for (let from = 0; from < tokens.length; from += 50) {
+    const batch = tokens.slice(from, from + 50).map((t) => ['GET', `${BASE}/api/v1/me`, null,
+      { headers: { Authorization: `Bearer ${t}` }, tags: { name: 'warm-up' } }]);
+    for (const res of http.batch(batch)) {
+      if (res.status !== 200) throw new Error(`GET /me: HTTP ${res.status}`);
+    }
+  }
+
+  // Production servers are warm. Fresh containers are not: the first claims would also pay class loading and JIT
+  // compilation (a 0.3 s "Metadata GC Threshold" pause in run 06). 200 claims on a separate shift 40 days out
+  // (other day and ISO week, so no overlap or weekly-limit effect) exercise both the success and the full path.
+  const warm = http.post(`${BASE}/api/v1/shifts`, JSON.stringify({
+    name: 'Warm-up', startAt: new Date(Date.now() + 40 * 86_400_000).toISOString(),
+    endAt: new Date(Date.now() + 40 * 86_400_000 + 3_600_000).toISOString(),
+    registrationOpenAt: new Date(Date.now() - 60_000).toISOString(), maxSlots: SLOTS,
+  }), { ...auth, tags: { name: 'create-shift' } }).json('id');
+  for (let from = 0; from < Math.min(200, tokens.length); from += 50) {
+    http.batch(tokens.slice(from, from + 50).map((t) => ['POST', `${BASE}/api/v1/shifts/${warm}/registrations`,
+      null, { headers: { Authorization: `Bearer ${t}` }, tags: { name: 'warm-up' } }]));
+  }
   return { shifts, tokens, manager };
 }
 
