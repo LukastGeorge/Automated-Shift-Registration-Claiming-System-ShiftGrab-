@@ -72,7 +72,7 @@ services:
 
   # Let's Encrypt: obtains the first certificate (see runbook) and renews it twice a day when due.
   certbot:
-    image: certbot/certbot:v4.2.0
+    image: certbot/certbot:v5.10.0
     restart: unless-stopped
     logging: *logging
     entrypoint: ["/bin/sh", "-c", "trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet; sleep 12h & wait $${!}; done"]
