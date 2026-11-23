@@ -1,0 +1,70 @@
+# Production / Vận hành production
+
+The production stack is one VPS running Docker Compose ([ADR-0006](../adr/0006-vps-docker-compose.md)). Files: [`infra/docker/docker-compose.prod.yml`](../../infra/docker/docker-compose.prod.yml), [`infra/nginx/`](../../infra/nginx), [`infra/keycloak/realm-shiftgrab.prod.json`](../../infra/keycloak/realm-shiftgrab.prod.json).
+
+```
+Internet ─▶ edge nginx :80/:443 ─┬─ /        ─▶ frontend   (static app, config.json from env)
+            TLS (Let's Encrypt)  ├─ /api/    ─▶ backend-1 ┐ least_conn
+                                 ├─ /ws      ─▶ backend-2 ┘ WebSocket upgrade
+                                 └─ /auth/   ─▶ keycloak   (own database)
+            private network: postgres · redis · mailpit · certbot
+```
+
+Only the edge publishes ports. `/actuator` and the Keycloak admin console are not reachable from the internet.
+
+## 1. Configure / Cấu hình
+
+```bash
+cp infra/docker/.env.prod.example infra/docker/.env.prod
+chmod 600 infra/docker/.env.prod          # secrets: readable by the deploy user only
+# fill in DOMAIN, SHIFTGRAB_PUBLIC_URL and every "change-me" (openssl rand -base64 32)
+```
+
+## 2. Start / Khởi động
+
+```bash
+docker compose -f infra/docker/docker-compose.prod.yml --env-file infra/docker/.env.prod up -d
+docker compose -f infra/docker/docker-compose.prod.yml --env-file infra/docker/.env.prod ps   # all healthy
+```
+
+Without a certificate the edge serves plain HTTP and answers Let's Encrypt challenges.
+
+## 3. First TLS certificate / Chứng chỉ TLS lần đầu
+
+DNS of `DOMAIN` must point to the server and port 80 must be open.
+
+```bash
+docker compose -f infra/docker/docker-compose.prod.yml --env-file infra/docker/.env.prod run --rm --entrypoint certbot certbot \
+  certonly --webroot -w /var/www/certbot -d "$DOMAIN" --email you@example.com --agree-tos --no-eff-email
+docker compose -f infra/docker/docker-compose.prod.yml --env-file infra/docker/.env.prod restart edge   # switches to HTTPS
+```
+
+Renewal is automatic: the `certbot` service tries twice a day, the edge re-reads certificates every 6 hours.
+
+## 4. Smoke test / Kiểm tra nhanh
+
+```bash
+node infra/scripts/smoke-test.mjs https://$DOMAIN <manager-password> <staff-password>
+```
+
+It checks: the app and `config.json`, actuator and admin console hidden, no password-grant client, PKCE login through `/auth`, token issuer = public URL, API through the load balancer, claim, live update over `/ws`. CD runs it after every deployment (SG-75).
+
+## Test the production stack on a laptop / Chạy thử stack production trên máy
+
+Use `DOMAIN=localhost`, `SHIFTGRAB_PUBLIC_URL=http://localhost:8088`, `EDGE_HTTP_PORT=8088` and locally built images:
+
+```bash
+docker build -t localtest/shiftgrab-backend:dev backend
+docker build -t localtest/shiftgrab-frontend:dev frontend
+# .env.prod with IMAGE_PREFIX=localtest and SHIFTGRAB_VERSION=dev
+docker compose -f infra/docker/docker-compose.prod.yml --env-file <file> up -d
+node infra/scripts/smoke-test.mjs http://localhost:8088 <manager-password> <staff-password>
+docker compose -f infra/docker/docker-compose.prod.yml --env-file <file> down -v   # -v deletes the test data
+```
+
+## 🇻🇳 Tóm tắt
+- Stack production gồm 9 container trên một VPS. Chỉ có **edge nginx** mở cổng ra ngoài: nó lo TLS, cân bằng tải giữa 2 backend, chuyển tiếp WebSocket, và chuyển `/auth` sang Keycloak.
+- **Bí mật** chỉ nằm trong `.env.prod` (`chmod 600`), không bao giờ commit.
+- **Chứng chỉ TLS:** lần đầu chạy certbot thủ công, sau đó tự gia hạn.
+- **Kiểm tra sau mỗi lần deploy:** chạy `infra/scripts/smoke-test.mjs` (12 bước).
+- **Chạy thử trên máy:** dùng `DOMAIN=localhost` và cổng 8088.

@@ -1,0 +1,86 @@
+{
+  "realm": "shiftgrab",
+  "displayName": "ShiftGrab",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "resetPasswordAllowed": false,
+  "bruteForceProtected": true,
+  "failureFactor": 5,
+  "accessTokenLifespan": 300,
+  "ssoSessionIdleTimeout": 1800,
+  "internationalizationEnabled": true,
+  "supportedLocales": ["en", "vi"],
+  "defaultLocale": "vi",
+  "roles": {
+    "realm": [
+      { "name": "MANAGER", "description": "Creates and manages shifts, views reports and audit log" },
+      { "name": "STAFF", "description": "Claims and cancels shifts" }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "shiftgrab-frontend",
+      "name": "ShiftGrab web app",
+      "description": "Angular SPA. Public client, Authorization Code + PKCE (S256). Production: no password-grant client exists.",
+      "enabled": true,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": ["${SHIFTGRAB_PUBLIC_URL}/*"],
+      "webOrigins": ["${SHIFTGRAB_PUBLIC_URL}"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "${SHIFTGRAB_PUBLIC_URL}/*"
+      },
+      "protocolMappers": [
+        {
+          "name": "shiftgrab-api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "shiftgrab-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "manager",
+      "email": "manager@shiftgrab.demo",
+      "firstName": "Lan",
+      "lastName": "Tran",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "${SHIFTGRAB_DEMO_MANAGER_PASSWORD}", "temporary": false }],
+      "realmRoles": ["MANAGER"]
+    },
+    {
+      "username": "staff1",
+      "email": "staff1@shiftgrab.demo",
+      "firstName": "An",
+      "lastName": "Nguyen",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "${SHIFTGRAB_DEMO_STAFF_PASSWORD}", "temporary": false }],
+      "realmRoles": ["STAFF"]
+    },
+    {
+      "username": "staff2",
+      "email": "staff2@shiftgrab.demo",
+      "firstName": "Binh",
+      "lastName": "Le",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "${SHIFTGRAB_DEMO_STAFF_PASSWORD}", "temporary": false }],
+      "realmRoles": ["STAFF"]
+    }
+  ]
+}

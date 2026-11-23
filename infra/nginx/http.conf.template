@@ -1,0 +1,12 @@
+# No certificate yet (first start, or local test): plain HTTP. Let's Encrypt's HTTP-01 challenge is answered from
+# /var/www/certbot so certbot can obtain the first certificate.
+server {
+    listen 80;
+    server_name ${DOMAIN};
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    include /etc/nginx/shiftgrab/locations.conf;
+}
