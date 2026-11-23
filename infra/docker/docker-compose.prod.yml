@@ -47,7 +47,7 @@ x-backend: &backend
 
 services:
   edge:
-    image: nginx:1.29-alpine
+    image: nginx:1.31-alpine
     restart: unless-stopped
     logging: *logging
     depends_on: [frontend, backend-1, backend-2, keycloak, grafana]
