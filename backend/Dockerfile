@@ -15,7 +15,8 @@ RUN --mount=type=cache,target=/root/.m2 sh mvnw -B -q package -DskipTests \
 
 # ---- runtime: JRE only, non-root -----------------------------------------------------------------------------
 FROM eclipse-temurin:21-jre-alpine
-RUN addgroup -S shiftgrab && adduser -S -G shiftgrab shiftgrab
+# Pick up OS security fixes published after the base image was built (scanned by Trivy, SG-73).
+RUN apk upgrade --no-cache && addgroup -S shiftgrab && adduser -S -G shiftgrab shiftgrab
 WORKDIR /app
 # Least to most frequently changed, so a code change only replaces the last, small layer.
 COPY --from=build /extracted/dependencies/ ./
