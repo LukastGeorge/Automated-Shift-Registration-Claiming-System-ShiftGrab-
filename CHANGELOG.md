@@ -4,6 +4,20 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [0.7.0] - 2026-11-23 — Sprint 7: Docker, CD and operations
+
+### Added
+- Production Dockerfiles: multi-stage, JRE-only/unprivileged nginx runtimes, Spring Boot layers, non-root users, health checks; web app configured at start-up from environment variables ([#34](../../issues/34), [#108](../../pull/108)).
+- Production Compose stack: Nginx edge (TLS with Let's Encrypt, least-connection balancing over two backends, WebSocket, `/auth` to Keycloak, internal endpoints hidden), Keycloak in production mode with its own database, memory limits, log rotation; end-to-end smoke test and production runbook ([#35](../../issues/35), [#109](../../pull/109)).
+- Monitoring: claim outcome counter and latency histograms, Prometheus with four alert rules, Grafana dashboard provisioned from files ([#36](../../issues/36), [#110](../../pull/110)).
+- Security scanning: CodeQL for Java and TypeScript, Trivy for Dockerfiles and images on every PR and weekly; required checks on `main` and `develop` ([#37](../../issues/37), [#111](../../pull/111)).
+- Continuous deployment: images to GHCR with SBOM and provenance, rolling deployment, smoke test and automatic rollback ([#39](../../issues/39), [#112](../../pull/112)).
+- Daily backups of both databases with a restore script, tested by a restore drill ([#40](../../issues/40), [#113](../../pull/113)).
+- VPS provisioning and hardening script; infrastructure CI with ShellCheck and configuration validation ([#38](../../issues/38), [#114](../../pull/114)).
+
+### Fixed
+- Runtime images apply Alpine security updates (a fixable CRITICAL in the nginx base image, found by Trivy).
+
 ## [0.6.0] - 2026-11-23 — Sprint 6: Reports and audit screens
 
 ### Added
