@@ -1,0 +1,70 @@
+<h1>{{ 'report.title' | t }}</h1>
+<p class="rules">{{ 'report.rules' | t: { zone: fmt.timeZone } }}</p>
+
+<form class="filters" (ngSubmit)="load()">
+  <mat-form-field subscriptSizing="dynamic">
+    <mat-label>{{ 'admin.from' | t }}</mat-label>
+    <input matInput type="date" name="from" [ngModel]="from()" (ngModelChange)="from.set($event)" required data-testid="from" />
+  </mat-form-field>
+  <mat-form-field subscriptSizing="dynamic">
+    <mat-label>{{ 'admin.to' | t }}</mat-label>
+    <input matInput type="date" name="to" [ngModel]="to()" (ngModelChange)="to.set($event)" required data-testid="to" />
+  </mat-form-field>
+  <button mat-flat-button type="submit" [disabled]="state.loading()">{{ 'report.show' | t }}</button>
+  <span class="spacer"></span>
+  <button mat-stroked-button type="button" (click)="download('csv')" [disabled]="downloading() !== null" data-testid="csv">
+    <mat-icon aria-hidden="true">download</mat-icon>
+    {{ 'report.csv' | t }}
+  </button>
+  <button mat-stroked-button type="button" (click)="download('xlsx')" [disabled]="downloading() !== null" data-testid="xlsx">
+    <mat-icon aria-hidden="true">table_view</mat-icon>
+    {{ 'report.xlsx' | t }}
+  </button>
+</form>
+
+@if (state.loading() || downloading()) {
+  <mat-progress-bar mode="indeterminate" [attr.aria-label]="'app.loading' | t" />
+}
+@if (state.error(); as problem) {
+  <app-load-error [problem]="problem" (retry)="load()" />
+}
+
+@if (state.data(); as report) {
+  @if (report.rows.length === 0) {
+    <p class="rules">{{ 'report.empty' | t }}</p>
+  } @else {
+    <div class="table-wrap">
+      <table data-testid="report">
+        <thead>
+          <tr>
+            <th scope="col">{{ 'report.colName' | t }}</th>
+            <th scope="col" class="num">{{ 'report.colShifts' | t }}</th>
+            <th scope="col" class="num">{{ 'report.colHours' | t }}</th>
+            <th scope="col" class="num">{{ 'report.colPay' | t }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of report.rows; track row.userId) {
+            <tr [class.zero]="row.shifts === 0">
+              <th scope="row">
+                <span class="name">{{ row.fullName }}</span>
+                <span class="email">{{ row.email }}</span>
+              </th>
+              <td class="num">{{ row.shifts }}</td>
+              <td class="num">{{ fmt.hours(row.hours) }}</td>
+              <td class="num">{{ fmt.money(row.pay) }}</td>
+            </tr>
+          }
+        </tbody>
+        <tfoot>
+          <tr data-testid="totals">
+            <th scope="row">{{ 'report.total' | t }}</th>
+            <td class="num">{{ report.totals.shifts }}</td>
+            <td class="num">{{ fmt.hours(report.totals.hours) }}</td>
+            <td class="num">{{ fmt.money(report.totals.pay) }}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  }
+}

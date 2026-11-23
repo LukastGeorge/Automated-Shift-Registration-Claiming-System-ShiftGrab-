@@ -84,6 +84,17 @@ class ReportExportApiTests extends ApiTestSupport {
     }
 
     @Test
+    @DisplayName("The web app on another origin can read the file name (CORS exposes Content-Disposition)")
+    void fileNameVisibleToTheWebApp() throws Exception {
+        mvc.perform(get("/api/v1/reports/hours").param("from", "2026-10-01").param("to", "2026-10-31")
+                        .param("format", "csv").header("Origin", "http://localhost:4200").with(manager()))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:4200"))
+                .andExpect(header().string("Access-Control-Expose-Headers",
+                        org.hamcrest.Matchers.containsString("Content-Disposition")));
+    }
+
+    @Test
     @DisplayName("Unknown format or language is a validation error; JSON stays the default")
     void formats() throws Exception {
         mvc.perform(get("/api/v1/reports/hours").param("from", "2026-10-01").param("to", "2026-10-31")

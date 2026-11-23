@@ -117,6 +117,51 @@ export interface UserSummary {
   hourlyRate: number;
 }
 
+/** SG-50. Days are `YYYY-MM-DD` in the organisation zone; hours and pay are decimals sent as numbers. */
+export interface HoursReport {
+  from: string;
+  to: string;
+  timeZone: string;
+  generatedAt: string;
+  rows: { userId: number; fullName: string; email: string; shifts: number; hours: number; pay: number }[];
+  totals: { shifts: number; hours: number; pay: number };
+}
+
+export type AuditAction =
+  | 'SHIFT_CREATED'
+  | 'SHIFT_UPDATED'
+  | 'SHIFT_CANCELLED'
+  | 'SHIFT_REGISTRATIONS_CANCELLED'
+  | 'TEMPLATE_CREATED'
+  | 'SHIFTS_GENERATED'
+  | 'SHIFT_CLAIMED'
+  | 'REGISTRATION_CANCELLED'
+  | 'HOURLY_RATE_CHANGED';
+
+export const AUDIT_ACTIONS: AuditAction[] = [
+  'SHIFT_CREATED',
+  'SHIFT_UPDATED',
+  'SHIFT_CANCELLED',
+  'SHIFT_REGISTRATIONS_CANCELLED',
+  'TEMPLATE_CREATED',
+  'SHIFTS_GENERATED',
+  'SHIFT_CLAIMED',
+  'REGISTRATION_CANCELLED',
+  'HOURLY_RATE_CHANGED',
+];
+
+/** SG-52 entry; `details` is a small JSON summary, e.g. `{ "maxSlots": { "from": 3, "to": 5 } }`. */
+export interface AuditEntry {
+  id: number;
+  occurredAt: string;
+  actorId: number | null;
+  actorName: string | null;
+  action: AuditAction;
+  targetType: 'SHIFT' | 'TEMPLATE' | 'REGISTRATION' | 'USER';
+  targetId: number | null;
+  details: Record<string, unknown> | null;
+}
+
 export interface Me {
   id: number;
   fullName: string;

@@ -1,0 +1,71 @@
+.rules {
+  color: var(--mat-sys-on-surface-variant);
+  max-width: 75ch;
+  margin: 0 0 12px;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.spacer {
+  flex: 1 1 auto;
+}
+
+.table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 12px;
+}
+
+table {
+  width: 100%;
+  min-width: 560px;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: 10px 16px;
+  text-align: left;
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
+}
+
+thead th {
+  font: var(--mat-sys-title-small);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+tbody th {
+  font-weight: normal;
+}
+
+.name {
+  display: block;
+}
+
+.email {
+  display: block;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-small);
+}
+
+.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+tr.zero td {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+tfoot th,
+tfoot td {
+  font-weight: 600;
+  border-bottom: 0;
+  background: var(--mat-sys-surface-container);
+}

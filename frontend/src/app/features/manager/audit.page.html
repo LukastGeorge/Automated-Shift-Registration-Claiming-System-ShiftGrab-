@@ -1,0 +1,82 @@
+<h1>{{ 'audit.title' | t }}</h1>
+<p class="sub">{{ 'audit.subtitle' | t }}</p>
+
+<form class="filters" (ngSubmit)="apply()">
+  <mat-form-field subscriptSizing="dynamic">
+    <mat-label>{{ 'audit.action' | t }}</mat-label>
+    <mat-select [value]="action()" (selectionChange)="action.set($event.value); apply()" data-testid="action">
+      <mat-option value="">{{ 'app.all' | t }}</mat-option>
+      @for (a of actions; track a) {
+        <mat-option [value]="a">{{ actionKey(a) | t }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+  <mat-form-field subscriptSizing="dynamic">
+    <mat-label>{{ 'admin.from' | t }}</mat-label>
+    <input matInput type="date" name="from" [ngModel]="from()" (ngModelChange)="from.set($event)" />
+  </mat-form-field>
+  <mat-form-field subscriptSizing="dynamic">
+    <mat-label>{{ 'admin.to' | t }}</mat-label>
+    <input matInput type="date" name="to" [ngModel]="to()" (ngModelChange)="to.set($event)" />
+  </mat-form-field>
+  <button mat-stroked-button type="submit">
+    <mat-icon aria-hidden="true">refresh</mat-icon>
+    {{ 'app.refresh' | t }}
+  </button>
+  @if (actor(); as who) {
+    <button mat-button type="button" class="actor-chip" (click)="clearActor()" data-testid="actor-chip">
+      {{ 'audit.byActor' | t: { name: who.name } }}
+      <mat-icon aria-hidden="true">close</mat-icon>
+      <span class="sr-only">{{ 'audit.clearActor' | t }}</span>
+    </button>
+  }
+</form>
+
+@if (state.loading()) {
+  <mat-progress-bar mode="indeterminate" [attr.aria-label]="'app.loading' | t" />
+}
+@if (state.error(); as problem) {
+  <app-load-error [problem]="problem" (retry)="load()" />
+}
+
+@if (state.data(); as data) {
+  @if (data.content.length === 0) {
+    <p class="sub">{{ 'audit.empty' | t }}</p>
+  } @else {
+    <ol class="log">
+      @for (entry of data.content; track entry.id) {
+        <li class="entry" [attr.data-testid]="'entry-' + entry.id">
+          <time class="when">{{ fmt.dateTime(entry.occurredAt) }}</time>
+          <div class="what">
+            <span class="action">{{ actionKey(entry.action) | t }}</span>
+            <span class="target">{{ targetKey(entry) | t }} #{{ entry.targetId }}</span>
+            @if (entry.actorId !== null) {
+              <button type="button" class="actor" (click)="filterByActor(entry)" [attr.data-testid]="'actor-' + entry.id">
+                {{ entry.actorName ?? '#' + entry.actorId }}
+              </button>
+            } @else {
+              <span class="actor">{{ 'audit.system' | t }}</span>
+            }
+          </div>
+          @if (details(entry).length) {
+            <ul class="details">
+              @for (line of details(entry); track line) {
+                <li>{{ line }}</li>
+              }
+            </ul>
+          }
+        </li>
+      }
+    </ol>
+
+    @if (data.totalPages > 1) {
+      <nav class="pager" [attr.aria-label]="'nav.menu' | t">
+        <button mat-button type="button" (click)="goTo(page() - 1)" [disabled]="page() === 0">{{ 'app.previous' | t }}</button>
+        <span>{{ 'app.page' | t: { page: page() + 1, total: data.totalPages } }}</span>
+        <button mat-button type="button" (click)="goTo(page() + 1)" [disabled]="page() + 1 >= data.totalPages">
+          {{ 'app.next' | t }}
+        </button>
+      </nav>
+    }
+  }
+}

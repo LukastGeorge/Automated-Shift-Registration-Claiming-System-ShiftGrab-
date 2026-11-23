@@ -23,6 +23,8 @@ export const NAV_ITEMS: NavItem[] = [
   { path: '/manage/shifts', label: 'nav.manageShifts', icon: 'edit_calendar', role: 'MANAGER' },
   { path: '/manage/templates', label: 'nav.templates', icon: 'event_repeat', role: 'MANAGER' },
   { path: '/manage/staff', label: 'nav.staff', icon: 'group', role: 'MANAGER' },
+  { path: '/manage/reports', label: 'nav.reports', icon: 'payments', role: 'MANAGER' },
+  { path: '/manage/audit', label: 'nav.audit', icon: 'history', role: 'MANAGER' },
   { path: '/profile', label: 'nav.profile', icon: 'person' },
 ];
 
