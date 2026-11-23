@@ -16,8 +16,9 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /src/dist/shiftgrab-web/browser /usr/share/nginx/html
 COPY --chmod=755 docker/40-write-config.sh /docker-entrypoint.d/40-write-config.sh
 USER root
+# Security fixes released after the base image was built (Trivy found a fixable CRITICAL in brotli-libs, SG-73).
 # The entrypoint script rewrites config.json at start-up, so the non-root nginx user must own it.
-RUN chown 101:101 /usr/share/nginx/html/config.json
+RUN apk upgrade --no-cache && chown 101:101 /usr/share/nginx/html/config.json
 USER 101
 ENV API_URL="" \
     KEYCLOAK_URL="http://localhost:8180" \
