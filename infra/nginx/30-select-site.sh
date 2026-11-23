@@ -6,6 +6,7 @@ set -eu
 
 select_site() {
     if [ -f "/etc/letsencrypt/live/${DOMAIN}/fullchain.pem" ]; then site=https; else site=http; fi
+    # shellcheck disable=SC2016 # literal on purpose: tells envsubst to replace only ${DOMAIN}, not nginx's $host
     envsubst '${DOMAIN}' < "/etc/nginx/shiftgrab/${site}.conf.template" > /etc/nginx/conf.d/default.conf
     echo "edge: serving ${DOMAIN} over ${site}"
 }
