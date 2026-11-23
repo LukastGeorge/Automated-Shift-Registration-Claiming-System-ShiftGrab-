@@ -51,7 +51,7 @@ else
 fi
 
 echo "Infrastructure (no change if already up to date)"
-compose up -d postgres redis keycloak mailpit prometheus grafana certbot
+compose up -d postgres redis keycloak mailpit prometheus grafana certbot backup
 
 echo "Rolling update"
 # One command per line on purpose: `set -e` ignores a failure on the left of `&&`, so

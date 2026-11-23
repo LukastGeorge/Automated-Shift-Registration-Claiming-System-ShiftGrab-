@@ -69,7 +69,23 @@ cd /opt/shiftgrab && sh infra/scripts/deploy.sh 0.6.0           # or any publish
 ```
 `--rollback` returns to the current version if the last deployment did not finish, otherwise to the one before it. The same is available from GitHub: *Actions → CD → Run workflow* with a version.
 
-## 6. Monitoring / Giám sát (SG-72)
+## 6. Backups and restore / Sao lưu và khôi phục (SG-76, NFR-06)
+
+The `backup` service runs `pg_dump` (custom format) of **both** databases, `shiftgrab` and `keycloak`, at start-up and every day at `BACKUP_AT` (02:30 Vietnam time), keeping `BACKUP_KEEP_DAYS` (7) days. Files are written to `.part` first, so a crash never leaves a truncated file that looks valid. The service is **unhealthy when the last successful backup is older than 26 h**, so a silently failing backup shows up in `docker compose ps`.
+
+```bash
+docker compose -f infra/docker/docker-compose.prod.yml --env-file infra/docker/.env.prod exec backup sh /usr/local/bin/backup.sh --once   # backup now
+sh infra/scripts/restore.sh                                     # list backups
+sh infra/scripts/restore.sh shiftgrab-20261123T023000Z.dump     # restore one
+```
+
+`restore.sh` stops the services using that database (backends, or Keycloak), restores in **one transaction** (`--clean --if-exists --single-transaction`: all or nothing), and starts them again.
+
+**Restore drill (done before release):** created data → backup → deleted all shifts and registrations → `restore.sh` → data back (shifts, registrations and the append-only audit log), backends healthy, smoke test 12/12. The restore took **15 s**, far inside the 1 h RTO.
+
+**Limit:** the backups live on the same server, so they protect against mistakes and bad deployments, not against losing the server. Set `BACKUP_DIR` to a host path and copy it off the machine daily (for example `rclone sync /var/backups/shiftgrab remote:shiftgrab-backups` from cron). This is the next step once a server exists.
+
+## 7. Monitoring / Giám sát (SG-72)
 
 - **Grafana:** `https://$DOMAIN/grafana/` (user `admin`, password `GRAFANA_ADMIN_PASSWORD`). Dashboard **ShiftGrab overview**: instances up, request rate by status, claim p95/p99 against the 300 ms SLO (NFR-02), claim outcomes per minute, lock wait p95, 5xx ratio, JVM heap, DB connections. Datasource and dashboard are provisioned from `infra/grafana/` (configuration as code: edit the JSON, not the UI). `GRAFANA_ANONYMOUS=true` gives visitors read-only access for a demo.
 - **Prometheus:** internal only, scrapes `/actuator/prometheus` on both backends every 15 s, keeps 7 days. Alert rules in `infra/prometheus/alerts.yml`: instance down, 5xx > 5 %, claim p95 > 300 ms, claims refused because Redis is down. They show in Grafana/Prometheus; sending them to e-mail or chat (Alertmanager) is a later step.
@@ -93,5 +109,6 @@ docker compose -f infra/docker/docker-compose.prod.yml --env-file <file> down -v
 - **Bí mật** chỉ nằm trong `.env.prod` (`chmod 600`), không bao giờ commit.
 - **Chứng chỉ TLS:** lần đầu chạy certbot thủ công, sau đó tự gia hạn.
 - **Kiểm tra sau mỗi lần deploy:** chạy `infra/scripts/smoke-test.mjs` (12 bước).
+- **Backup:** `pg_dump` cả hai database lúc 02:30 mỗi ngày, giữ 7 ngày. Service `backup` chuyển sang unhealthy nếu quá 26 giờ không có bản backup thành công. Khôi phục bằng `restore.sh`; đã diễn tập thật và khôi phục xong trong 15 giây. Giới hạn: bản backup đang nằm trên cùng máy chủ, nên bước tiếp theo là sao chép ra ngoài (rclone).
 - **CD:** gắn tag `v*` là GitHub Actions tự build image, đẩy lên GHCR rồi quét bảo mật. Khi đã bật `DEPLOY_ENABLED`, nó tiếp tục deploy kiểu rolling (lần lượt từng backend, API không bị gián đoạn), chạy smoke test, và tự rollback nếu smoke test thất bại. Rollback thủ công bằng `deploy.sh --rollback`.
 - **Chạy thử trên máy:** dùng `DOMAIN=localhost` và cổng 8088.
