@@ -1,0 +1,10 @@
+# Override for load tests only (SG-80): the production stack with the generated load-test realm
+# (1000 staff, password-grant client). Use together with the production file:
+#
+#   docker compose -f infra/docker/docker-compose.prod.yml -f load-tests/docker-compose.loadtest.yml \
+#     --env-file <env file> up -d
+# Relative paths resolve from the FIRST compose file's folder (infra/docker), hence ../../load-tests.
+services:
+  keycloak:
+    volumes:
+      - ../../load-tests/.generated/realm-loadtest.json:/opt/keycloak/data/import/realm-shiftgrab.json:ro
