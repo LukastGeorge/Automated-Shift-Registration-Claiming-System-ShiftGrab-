@@ -103,6 +103,22 @@ sh infra/scripts/restore.sh shiftgrab-20261123T023000Z.dump     # restore one
 - **Prometheus:** internal only, scrapes `/actuator/prometheus` on both backends every 15 s, keeps 7 days. Alert rules in `infra/prometheus/alerts.yml`: instance down, 5xx > 5 %, claim p95 > 300 ms, claims refused because Redis is down. They show in Grafana/Prometheus; sending them to e-mail or chat (Alertmanager) is a later step.
 - Check the config before committing: `docker run --rm --entrypoint promtool -v "$PWD/infra/prometheus:/etc/prometheus" prom/prometheus:v3.15.1 check config /etc/prometheus/prometheus.yml`
 
+### Database connections during a flash sale / Kết nối database khi flash sale (SG-81)
+
+Claims on one shift queue inside PostgreSQL (ADR-0004 revision), so the connection pool is the resource to watch.
+
+| Setting | Value | Why |
+|---|---|---|
+| `DB_POOL_SIZE` (per backend) | 25 | Measured: 10 made the pool the bottleneck (average wait 233 ms); 25 brought it to about 1 ms |
+| `KC_DB_POOL_MAX_SIZE` | 20 | Keycloak's default is 100, enough to starve the backends on its own |
+| Budget | 2 × 25 + 20 + ~5 reserve = **75 < 100** (`max_connections`) | Re-do this sum before adding a backend |
+| Hikari `connectionTimeout` | 1 s (`DB_CONNECTION_TIMEOUT_MS`) | Fail fast: `503 SERVICE_BUSY` + `Retry-After`, not a 30 s hang |
+| `CLAIM_LOCK_TIMEOUT` | 1 s | Longest wait for a shift row. 200 ms produced 30 needless `CLAIM_BUSY` in the load test |
+
+- **Watch:** `hikaricp_connections_acquire_seconds` (pool wait), `hikaricp_connections_pending`, `shiftgrab_claims_total{result="CLAIM_BUSY"}` and `{result="SERVICE_BUSY"}`, plus 5xx in the dashboard.
+- **Scaling past ~3 backends:** the budget no longer fits. Put **PgBouncer in transaction mode** between the backends and PostgreSQL. The claim timeouts are `SET LOCAL`, which is compatible with it.
+- 🇻🇳 Khi flash sale, hàng chờ nằm trong PostgreSQL nên phải canh pool kết nối. Tổng 2×25 (backend) + 20 (Keycloak) + dự phòng ≈ 75, dưới mức tối đa 100. Thêm backend thì tính lại; từ khoảng 3 backend trở lên thì đặt PgBouncer (transaction mode) ở giữa.
+
 ## Test the production stack on a laptop / Chạy thử stack production trên máy
 
 Use `DOMAIN=localhost`, `SHIFTGRAB_PUBLIC_URL=http://localhost:8088`, `EDGE_HTTP_PORT=8088` and locally built images:
@@ -113,8 +129,13 @@ docker build -t localtest/shiftgrab-frontend:dev frontend
 # .env.prod with IMAGE_PREFIX=localtest and SHIFTGRAB_VERSION=dev
 docker compose -f infra/docker/docker-compose.prod.yml --env-file <file> up -d
 node infra/scripts/smoke-test.mjs http://localhost:8088 <manager-password> <staff-password>
+# Browser journey (SG-82): see e2e/README.md
+(cd e2e && npm ci && npx playwright install chromium && \
+  E2E_MANAGER_PASSWORD=<manager-password> E2E_STAFF_PASSWORD=<staff-password> npx playwright test)
 docker compose -f infra/docker/docker-compose.prod.yml --env-file <file> down -v   # -v deletes the test data
 ```
+
+The same browser journey runs in CI (`e2e.yml`): required on every pull request into `main`, nightly on `develop`, and on pull requests labelled `e2e`. A failed run uploads the Playwright trace, screenshots, video and container logs as the `e2e-report` artifact.
 
 ## Infrastructure CI / CI cho hạ tầng
 

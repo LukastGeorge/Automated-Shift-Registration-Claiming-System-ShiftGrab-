@@ -1,5 +1,6 @@
 package com.shiftgrab.shared.error;
 
+import java.sql.SQLTransientConnectionException;
 import java.util.List;
 
 import org.slf4j.Logger;
@@ -7,6 +8,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.MessageSourceResolvable;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.jdbc.CannotGetJdbcConnectionException;
+import org.springframework.transaction.CannotCreateTransactionException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
@@ -72,6 +75,32 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     /** Raised by method security ({@code @PreAuthorize}) inside the MVC layer. */
+    /**
+     * SG-81: the pool had no free connection within {@code connectionTimeout} (1 s). Temporary by nature, so 503
+     * with Retry-After instead of a 500 that looks like a bug and is not retried. Spring wraps Hikari's timeout
+     * differently depending on where it happens (opening a transaction or a plain query), so the root cause decides;
+     * anything else is a real failure and stays a 500.
+     */
+    @ExceptionHandler({ CannotCreateTransactionException.class, CannotGetJdbcConnectionException.class })
+    ResponseEntity<ProblemDetail> handleNoConnection(Exception ex, HttpServletRequest request) {
+        if (!causedByPoolTimeout(ex)) {
+            return ResponseEntity.internalServerError().body(handleUnexpected(ex, request));
+        }
+        log.warn("No database connection available for {} {}: {}", forLog(request.getMethod()),
+                forLog(request.getRequestURI()), ex.getMessage());
+        return handleBusiness(new BusinessException(ErrorCode.SERVICE_BUSY,
+                "The service is busy right now. Please retry in a moment."), request);
+    }
+
+    static boolean causedByPoolTimeout(Throwable ex) {
+        for (Throwable t = ex; t != null; t = t.getCause()) {
+            if (t instanceof SQLTransientConnectionException) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     @ExceptionHandler(AccessDeniedException.class)
     ProblemDetail handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
         return Problems.of(ErrorCode.FORBIDDEN, "You do not have permission to perform this action.",
@@ -86,8 +115,17 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     /** Last resort: log the cause, never leak it to the client. */
     @ExceptionHandler(Exception.class)
     ProblemDetail handleUnexpected(Exception ex, HttpServletRequest request) {
-        log.error("Unhandled exception on {} {}", request.getMethod(), request.getRequestURI(), ex);
+        log.error("Unhandled exception on {} {}", forLog(request.getMethod()), forLog(request.getRequestURI()), ex);
         return Problems.of(ErrorCode.INTERNAL_ERROR, "An unexpected error occurred.", request.getRequestURI());
+    }
+
+    /**
+     * Request values are attacker-controlled: a URL containing an encoded CR/LF would otherwise start a forged log
+     * line (log injection, OWASP A09; flagged by CodeQL on SG-81). {@code \R} matches every Unicode line break
+     * ({@code \r\n}, {@code \n}, {@code \r}, U+0085, U+2028, U+2029), each replaced by a visible {@code _}.
+     */
+    static String forLog(String value) {
+        return value == null ? null : value.replaceAll("\\R", "_");
     }
 
     @Override

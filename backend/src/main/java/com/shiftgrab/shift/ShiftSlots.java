@@ -16,12 +16,18 @@ public interface ShiftSlots {
     Map<Long, Shift> findAllById(Collection<Long> shiftIds);
 
     /**
-     * ADR-0005 layer 2: {@code booked_slots + 1} only if a slot is free and the shift is OPEN, in one statement,
-     * so it stays correct even if the distributed lock was lost. Moves the shift to FULL when the last slot goes.
+     * ADR-0005 layer 2: {@code booked_slots + 1} only if a slot is free, the shift is OPEN and it is still the
+     * version the caller checked its rules against, all in one statement. Moves the shift to FULL when the last
+     * slot goes. The version is matched but not bumped (claims are not edits).
      *
-     * @return false if no slot was free (the caller answers SHIFT_FULL)
+     * <p>SG-81: matching the version closes a race where a manager changed the shift's times between the caller's
+     * read and this update, which used to book the old times. The returned row is the shift as now stored, so its
+     * times are the ones to copy into the registration.
+     *
+     * @return the updated shift, or empty when no slot was free or the shift changed since {@code expectedVersion}
+     *         (the caller re-reads to tell which)
      */
-    boolean tryReserveSlot(long shiftId);
+    Optional<Shift> tryReserveSlot(long shiftId, long expectedVersion);
 
     /** Gives one slot back (SG-31); a FULL shift becomes OPEN again (BR-11). No effect on cancelled shifts. */
     void releaseSlot(long shiftId);

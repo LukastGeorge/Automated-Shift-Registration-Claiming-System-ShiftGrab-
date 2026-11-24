@@ -7,7 +7,7 @@ import java.util.function.Supplier;
  * Mutual exclusion for claim-path business checks across backend instances (ADR-0004, Strategy pattern).
  *
  * <p>Locks are acquired in the order given and released in reverse order. Callers must use a fixed global
- * order to avoid deadlocks; {@link #claimKeys} encodes the one used by the claim path: user, then shift.
+ * order to avoid deadlocks. {@link #claimKeys} gives the keys of the claim path.
  *
  * <p>A lock is a performance and consistency aid, not a correctness guarantee: its lease can expire. Correctness
  * against overbooking comes from the conditional update and database constraints (ADR-0005).
@@ -19,7 +19,13 @@ public interface ShiftLockProvider {
 
     <T> T executeWithLocks(List<String> keys, Supplier<T> task);
 
-    static List<String> claimKeys(long userId, long shiftId) {
-        return List.of("user:" + userId, "shift:" + shiftId);
+    /**
+     * The claim path locks the <em>user</em> only (SG-81, ADR-0004 revision): it guards the multi-row rules of one
+     * person (BR-04 weekly hours, duplicate and overlapping claims). Slots are not locked here: the conditional
+     * UPDATE serialises claims on the shift row inside PostgreSQL, which the k6 flash sale showed to be far cheaper
+     * than queueing 100 requests per shift on a distributed lock (p95 6.1 s, 138 CLAIM_BUSY before the change).
+     */
+    static List<String> claimKeys(long userId) {
+        return List.of("user:" + userId);
     }
 }

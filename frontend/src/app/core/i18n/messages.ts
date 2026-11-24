@@ -232,6 +232,8 @@ export const vi = {
   'error.PRECONDITION_REQUIRED': 'Thiếu phiên bản dữ liệu. Hãy tải lại trang.',
   'error.CLAIM_BUSY': 'Rất nhiều người đang giành ca này.',
   'error.LOCK_UNAVAILABLE': 'Chức năng giành ca tạm thời gián đoạn.',
+  'error.SHIFT_CHANGED': 'Quản lý vừa thay đổi ca này. Hãy xem lại giờ ca rồi giành lại.',
+  'error.SERVICE_BUSY': 'Hệ thống đang bận.',
   'error.METHOD_NOT_ALLOWED': 'Thao tác không được hỗ trợ.',
 } as const;
 
@@ -467,5 +469,7 @@ export const en: Record<MessageKey, string> = {
   'error.PRECONDITION_REQUIRED': 'The data version is missing. Reload the page.',
   'error.CLAIM_BUSY': 'Many people are claiming this shift right now.',
   'error.LOCK_UNAVAILABLE': 'Claiming is temporarily unavailable.',
+  'error.SHIFT_CHANGED': 'A manager just changed this shift. Check its times, then claim again.',
+  'error.SERVICE_BUSY': 'The service is busy.',
   'error.METHOD_NOT_ALLOWED': 'This action is not supported.',
 };
