@@ -12,6 +12,8 @@ Internet ─▶ edge nginx :80/:443 ─┬─ /        ─▶ frontend   (static
 
 Only the edge publishes ports. `/actuator` and the Keycloak admin console are not reachable from the internet.
 
+**Something is wrong, or a secret must change?** See the [operations runbook](operations.md): incident checklist, a playbook per alert, and secret rotation. This file covers setting up, deploying, backing up and restoring.
+
 ## 0. Prepare the server / Chuẩn bị máy chủ (SG-74)
 
 A VPS with ~4 GB RAM and Ubuntu 24.04. From your laptop, create a key for the deploy user (`ssh-keygen -t ed25519 -f ~/.ssh/shiftgrab_deploy`), then as root on the server:
