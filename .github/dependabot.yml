@@ -50,6 +50,14 @@ updates:
       interval: weekly
     commit-message:
       prefix: "chore(deps)"
+    ignore:
+      # The runtime JRE must be the Java version the code is compiled and tested with (pom.xml, CI: 21).
+      # Moving to the next LTS is a planned upgrade of build, CI and runtime together, not an image bump.
+      - dependency-name: "eclipse-temurin"
+        update-types: ["version-update:semver-major"]
+      # The build image follows the Node.js range supported by the Angular version and used by CI (24).
+      - dependency-name: "node"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: docker-compose
     directory: /infra/docker
@@ -62,4 +70,8 @@ updates:
       # Major PostgreSQL upgrades need pg_upgrade or dump/restore and must move together with
       # Testcontainers and production (ADR-0002), so they are planned by hand, not by a bot PR.
       - dependency-name: "postgres"
+        update-types: ["version-update:semver-major"]
+      # Certificate renewal must be tried against a real certificate on the server before a major upgrade
+      # (runbook §3); a silent break shows up only when the certificate expires.
+      - dependency-name: "certbot/certbot"
         update-types: ["version-update:semver-major"]
