@@ -54,7 +54,8 @@ class PoolExhaustionHandlingTests {
     @Test
     void requestValuesCannotForgeLogLines() {
         assertThat(GlobalExceptionHandler.forLog("/api/v1/x\r\n2026-11-24 INFO forged admin login"))
-                .isEqualTo("/api/v1/x__2026-11-24 INFO forged admin login");
+                .isEqualTo("/api/v1/x_2026-11-24 INFO forged admin login");
+        assertThat(GlobalExceptionHandler.forLog("a\nb\rc d\u0085e")).isEqualTo("a_b_c_d_e");
         assertThat(GlobalExceptionHandler.forLog(null)).isNull();
     }
 

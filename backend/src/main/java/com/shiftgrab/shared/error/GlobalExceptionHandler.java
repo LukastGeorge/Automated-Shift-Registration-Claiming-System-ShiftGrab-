@@ -121,10 +121,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     /**
      * Request values are attacker-controlled: a URL containing an encoded CR/LF would otherwise start a forged log
-     * line (log injection, OWASP A09; flagged by CodeQL on SG-81). Line breaks become a visible {@code _}.
+     * line (log injection, OWASP A09; flagged by CodeQL on SG-81). {@code \R} matches every Unicode line break
+     * ({@code \r\n}, {@code \n}, {@code \r}, U+0085, U+2028, U+2029), each replaced by a visible {@code _}.
      */
     static String forLog(String value) {
-        return value == null ? null : value.replaceAll("[\r\n]", "_");
+        return value == null ? null : value.replaceAll("\\R", "_");
     }
 
     @Override
