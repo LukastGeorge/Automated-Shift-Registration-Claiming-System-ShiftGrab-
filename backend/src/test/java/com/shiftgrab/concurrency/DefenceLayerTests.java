@@ -28,8 +28,13 @@ import com.shiftgrab.shift.ShiftSlots;
 /**
  * ADR-0005: each layer must hold on its own, so each is attacked here with the layers above it removed.
  * No distributed lock is taken anywhere in this class.
+ *
+ * <p>The races run 20 transactions on a pool of 10, and same-user inserts on the EXCLUDE constraint may wait for
+ * PostgreSQL's deadlock detection (1 s). The production 1 s pool timeout (SG-81) is about failing fast for users,
+ * not what these tests examine, so it is lengthened here; otherwise a waiting thread fails with "Connection is not
+ * available" and the test depends on timing.
  */
-@SpringBootTest
+@SpringBootTest(properties = "spring.datasource.hikari.connection-timeout=30000")
 @Import(TestcontainersConfiguration.class)
 class DefenceLayerTests {
 

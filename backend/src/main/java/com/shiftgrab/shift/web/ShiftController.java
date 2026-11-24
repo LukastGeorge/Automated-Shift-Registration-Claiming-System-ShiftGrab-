@@ -41,6 +41,12 @@ import jakarta.validation.constraints.Size;
 @Tag(name = "Shifts")
 class ShiftController {
 
+    /**
+     * SG-92: names end up in e-mail subjects, CSV/XLSX cells and log lines; a line break or other control character
+     * has no business in a shift name and is refused at the door (defence in depth for header and log injection).
+     */
+    static final String NO_CONTROL_CHARACTERS = "[^\\p{Cntrl}]*";
+
     private final ShiftManagementService service;
 
     ShiftController(ShiftManagementService service) {
@@ -115,7 +121,9 @@ class ShiftController {
 
     /** All fields optional; {@code name}, when present, must not be blank. */
     record UpdateShiftRequest(
-            @Size(max = 100) @Pattern(regexp = ".*\\S.*", message = "must not be blank") String name,
+            @Size(max = 100) @Pattern(regexp = ".*\\S.*", message = "must not be blank")
+            @Pattern(regexp = NO_CONTROL_CHARACTERS, message = "must not contain line breaks or control characters")
+            String name,
             OffsetDateTime startAt,
             OffsetDateTime endAt,
             OffsetDateTime registrationOpenAt,
@@ -123,7 +131,9 @@ class ShiftController {
     }
 
     record CreateShiftRequest(
-            @NotBlank @Size(max = 100) String name,
+            @NotBlank @Size(max = 100)
+            @Pattern(regexp = NO_CONTROL_CHARACTERS, message = "must not contain line breaks or control characters")
+            String name,
             @NotNull OffsetDateTime startAt,
             @NotNull OffsetDateTime endAt,
             @NotNull OffsetDateTime registrationOpenAt,

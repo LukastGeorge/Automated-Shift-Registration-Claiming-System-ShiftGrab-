@@ -31,6 +31,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 @RestController
@@ -76,7 +77,10 @@ class ShiftTemplateController {
     }
 
     record CreateTemplateRequest(
-            @NotBlank @Size(max = 100) String name,
+            @NotBlank @Size(max = 100)
+            @Pattern(regexp = ShiftController.NO_CONTROL_CHARACTERS,
+                    message = "must not contain line breaks or control characters")
+            String name,
             @NotEmpty @Schema(description = "ISO weekdays, 1 = Monday ... 7 = Sunday", example = "[1,2,3,4,5]")
             Set<Integer> weekdays,
             @NotNull @Schema(type = "string", example = "08:00") LocalTime startTime,

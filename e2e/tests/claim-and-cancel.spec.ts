@@ -15,6 +15,13 @@ test('manager creates a shift, staff claims and cancels it, the manager sees it 
   const staffContext = await browser.newContext();
   const manager = await managerContext.newPage();
   const staff = await staffContext.newPage();
+  // SG-92: the whole journey must run under the Content-Security-Policy without a single violation
+  const cspViolations: string[] = [];
+  for (const page of [manager, staff]) {
+    page.on('console', (msg) => {
+      if (/Content Security Policy/i.test(msg.text())) cspViolations.push(msg.text());
+    });
+  }
 
   await test.step('manager logs in and creates a 2-slot shift that is open for registration now', async () => {
     await login(manager, accounts.manager, /\/manage\/shifts$/);
@@ -55,6 +62,7 @@ test('manager creates a shift, staff claims and cancels it, the manager sees it 
     await expect(row).toContainText('0/2');
   });
 
+  expect(cspViolations).toEqual([]);
   await managerContext.close();
   await staffContext.close();
 });

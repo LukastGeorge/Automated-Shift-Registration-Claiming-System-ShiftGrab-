@@ -150,6 +150,12 @@ class RecurringShiftsApiTests extends ApiTestSupport {
                  "openBefore": "P1D", "validFrom": "2030-01-01", "validTo": "2031-01-02"}
                 """)
                 .andExpect(jsonPath("$.errors[0].message").value("date range must not exceed 366 days"));
+        createTemplate("""
+                {"name": "Night\\tshift", "weekdays": [1], "startTime": "08:00", "endTime": "12:00", "maxSlots": 1,
+                 "openBefore": "P1D", "validFrom": "2030-01-01", "validTo": "2030-02-01"}
+                """)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("name")); // SG-92: control characters refused
         createTemplate("{\"name\": \"Empty\", \"weekdays\": []}")
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors", hasSize(7)));

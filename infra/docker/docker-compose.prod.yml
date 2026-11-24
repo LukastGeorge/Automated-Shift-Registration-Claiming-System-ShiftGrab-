@@ -52,7 +52,7 @@ x-backend: &backend
 
 services:
   edge:
-    image: nginx:1.29-alpine
+    image: nginx:1.31-alpine
     restart: unless-stopped
     logging: *logging
     depends_on: [frontend, backend-1, backend-2, keycloak, grafana]
@@ -210,7 +210,7 @@ services:
 
   # Monitoring (SG-72). Prometheus is internal; Grafana is served by the edge at /grafana/.
   prometheus:
-    image: prom/prometheus:v3.15.1
+    image: prom/prometheus:v3.16.0
     restart: unless-stopped
     logging: *logging
     command:
@@ -226,7 +226,7 @@ services:
           memory: 256m
 
   grafana:
-    image: grafana/grafana:13.2.5
+    image: grafana/grafana:13.3.1
     restart: unless-stopped
     logging: *logging
     depends_on: [prometheus]
@@ -240,6 +240,11 @@ services:
       GF_AUTH_ANONYMOUS_ENABLED: ${GRAFANA_ANONYMOUS:-false}
       GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
       GF_ANALYTICS_REPORTING_ENABLED: "false"
+      # Grafana 13 runs every bundled data source as its own process (13 of them). Within the 192 MiB limit that
+      # left it stuck at start-up at ~800 % CPU (garbage collection near the limit; seen in the SG-80 load runs and
+      # SG-90 checks). Only Prometheus is used, so the others are switched off.
+      GF_PLUGINS_DISABLE_PLUGINS: >-
+        elasticsearch,grafana-postgresql-datasource,grafana-pyroscope-datasource,influxdb,jaeger,loki,mssql,mysql,opentsdb,stackdriver,tempo,zipkin
     volumes:
       - ../grafana/provisioning:/etc/grafana/provisioning:ro
       - ../grafana/dashboards:/var/lib/grafana/dashboards:ro
@@ -247,7 +252,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 192m
+          memory: 256m # measured: ~175 MiB with only the Prometheus plugin; 192 MiB left no headroom
 
   # Catches e-mails until a real SMTP relay is configured (MAIL_HOST). Its web UI is not published.
   mailpit:

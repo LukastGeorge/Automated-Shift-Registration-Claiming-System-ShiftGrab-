@@ -22,6 +22,7 @@ coverage/
 .env.*
 !.env.example
 !.env.prod.example
+!.env.local.example
 
 # Generated load-test realm (1000 throwaway accounts) and k6 raw output
 load-tests/.generated/
