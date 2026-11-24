@@ -4,6 +4,29 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [0.8.0] - 2026-11-24 — Sprint 8: Load test, tuning and end-to-end tests
+
+### Added
+- k6 flash-sale load test: 1000 staff claim 50 slots at the same instant through nginx and both backends. A generated throwaway realm provides the accounts; `verify-db.sql` checks the database against the HTTP answers. Baseline report included ([#41](../../issues/41), [#126](../../pull/126)).
+- Playwright end-to-end journey on the real production stack: Keycloak login, a manager creates a shift, staff claims and cancels it, and the manager's list follows live. It runs in CI on pull requests into `main`, nightly on `develop`, on demand, and on pull requests labelled `e2e`. Failed runs keep a trace, screenshots, video and container logs ([#43](../../issues/43), [#130](../../pull/130)).
+- Error codes `SHIFT_CHANGED` (409) and `SERVICE_BUSY` (503 with `Retry-After`), with Vietnamese and English messages.
+
+### Changed
+- **Claims lock the user, not the shift** ([ADR-0004 revision](docs/adr/0004-redis-distributed-lock.md), [#42](../../issues/42), [#127](../../pull/127)):
+  - PostgreSQL's row lock orders claims on a shift.
+  - The claim transaction is short and bounded: `SET LOCAL lock_timeout` 1 s and `statement_timeout` 2 s.
+  - A per-instance sold-out memo answers late requests without a transaction.
+  - Connection budget: 25 per backend, Keycloak 20, Hikari timeout 1 s.
+  - Flash sale on the same laptop: 503 errors 138 → 0, server-side claim max 6.4 s → 1.26 s, average pool wait 233 ms → about 1 ms. Still exactly 50 claims and zero overbooking.
+- SRS: NFR-02 clarified. 300 ms at 500 req/s is the steady-load target, verified on the server; the flash-sale burst has its own target.
+
+### Fixed
+- **Deployment on Linux:** shell scripts were committed without the executable bit, which Windows checkouts cannot store. On a Linux server nginx skipped its site selection script and served its default page, and `./deploy.sh` would have been refused. All scripts are now `100755`, and infrastructure CI checks it. Found by the first E2E run on GitHub's Linux runner.
+- A manager changing a shift's times while it was being claimed produced a registration with the old times. The claim now checks the shift version and copies the times from the updated row.
+- Database connection timeouts and deadlock victims answered 500. They now answer 503 with `Retry-After`.
+- Request values are stripped of line breaks before logging (log injection, found by CodeQL).
+- The open-shifts page could show 2 booked slots after 1 claim when the live update arrived before the HTTP response (found by the new E2E test).
+
 ## [0.7.0] - 2026-11-23 — Sprint 7: Docker, CD and operations
 
 ### Added
