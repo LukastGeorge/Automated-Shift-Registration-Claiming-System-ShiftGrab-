@@ -8,6 +8,7 @@
   "resetPasswordAllowed": false,
   "bruteForceProtected": true,
   "failureFactor": 5,
+  "passwordPolicy": "length(8) and maxLength(128) and notUsername and notEmail",
   "accessTokenLifespan": 300,
   "ssoSessionIdleTimeout": 1800,
   "internationalizationEnabled": true,
