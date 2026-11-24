@@ -29,6 +29,10 @@ describe('NotifyService', () => {
     expect(notify.messageFor({ status: 503, code: 'CLAIM_BUSY', retryAfterSeconds: 1 })).toBe(
       'Rất nhiều người đang giành ca này. Thử lại sau 1 giây.',
     );
+    // SG-81: pool exhaustion is a temporary 503 too, never a raw "unexpected error"
+    expect(notify.messageFor({ status: 503, code: 'SERVICE_BUSY', retryAfterSeconds: 1 })).toBe(
+      'Hệ thống đang bận. Thử lại sau 1 giây.',
+    );
   });
 
   it('shows the raw code for errors it does not know', () => {

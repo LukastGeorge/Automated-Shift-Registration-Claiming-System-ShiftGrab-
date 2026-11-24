@@ -25,6 +25,11 @@ x-backend: &backend
     DB_NAME: shiftgrab
     DB_USER: shiftgrab
     DB_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD}
+    # Connections per instance (SG-81). Budget against PostgreSQL's max_connections (100):
+    # 2 backends x 25 + Keycloak 20 (KC_DB_POOL_MAX_SIZE) + backup/superuser reserve ~5 = 75.
+    # Before adding instances, re-do this sum; past ~3 instances put PgBouncer (transaction mode) in front.
+    DB_POOL_SIZE: ${DB_POOL_SIZE:-25}
+    CLAIM_LOCK_TIMEOUT: ${CLAIM_LOCK_TIMEOUT:-1s}
     REDIS_ADDRESS: redis://redis:6379
     # Tokens carry the public issuer; the signing keys are fetched over the private network (no hairpin via the
     # internet and the edge proxy).
@@ -111,6 +116,7 @@ services:
       KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
       KC_DB_USERNAME: keycloak
       KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?set KEYCLOAK_DB_PASSWORD}
+      KC_DB_POOL_MAX_SIZE: "20"        # SG-81 connection budget; Keycloak's own default is 100
       KC_HOSTNAME: ${SHIFTGRAB_PUBLIC_URL}/auth
       KC_HTTP_ENABLED: "true"          # TLS ends at the edge proxy
       KC_HTTP_RELATIVE_PATH: /auth

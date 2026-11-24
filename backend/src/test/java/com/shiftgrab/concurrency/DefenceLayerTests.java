@@ -18,6 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -60,7 +61,9 @@ class DefenceLayerTests {
     @Test
     @DisplayName("Layer 2 alone: 50 unlocked transactions reserve a 5-slot shift -> exactly 5 succeed")
     void conditionalUpdateAlonePreventsOverbooking() throws Exception {
-        List<Boolean> reserved = race(50, () -> transaction.execute(tx -> shiftSlots.tryReserveSlot(shiftId)));
+        long version = jdbc.queryForObject("SELECT version FROM shifts WHERE id = ?", Long.class, shiftId);
+        List<Boolean> reserved = race(50,
+                () -> transaction.execute(tx -> shiftSlots.tryReserveSlot(shiftId, version).isPresent()));
 
         assertThat(reserved.stream().filter(Boolean::booleanValue)).hasSize(5);
         assertThat(jdbc.queryForMap("SELECT status, booked_slots FROM shifts WHERE id = ?", shiftId))
@@ -113,6 +116,10 @@ class DefenceLayerTests {
                     """, shift, user, range, shiftMinutes, range, shiftMinutes);
             return true;
         } catch (DataIntegrityViolationException e) {
+            return false;
+        } catch (PessimisticLockingFailureException e) {
+            // Same-user inserts checking the EXCLUDE constraint wait on each other; with 3+ of them PostgreSQL may
+            // break a cycle by aborting one (40P01). That is a rejection too: the assertion is about rows inserted.
             return false;
         }
     }

@@ -116,6 +116,7 @@ Mỗi story có tiêu chí nghiệm thu (AC) dạng Given/When/Then. Mã `SG-xx`
 - AC6: Đã giữ ca này rồi thì `409 ALREADY_REGISTERED` (chống bấm đúp).
 - AC7: **N request giành đồng thời vào ca có M suất (N > M), trên nhiều instance backend, thì đúng M request thành công, phần còn lại nhận `SHIFT_FULL`.**
 - *Làm rõ ở Sprint 3:* request không lấy được khóa trong 3 giây thì nhận `503 CLAIM_BUSY` kèm `Retry-After` (không báo nhầm là ca đã đầy). Nếu dịch vụ khóa (Redis) sập thì việc giành ca bị từ chối với `503 LOCK_UNAVAILABLE`; mọi chức năng khác vẫn chạy. Với BR-04, ca vắt qua ranh giới tuần được tính giờ vào từng tuần ISO theo phần thời gian thực tế nằm trong tuần đó. Hạn mức 40 giờ/tuần và hạn hủy 24 giờ là cấu hình triển khai.
+- *Làm rõ ở Sprint 8 (SG-81, sửa đổi ADR-0004):* các lượt giành cùng một ca xếp hàng trong database tối đa 1 giây; quá thời gian đó thì nhận `503 CLAIM_BUSY` (`Retry-After: 1`). Nếu quản lý sửa ca đúng lúc đang có người giành, lượt giành được kiểm tra lại theo ca mới, và bản đăng ký luôn mang giờ hiện tại của ca; nếu ca tiếp tục bị sửa thì nhận `409 SHIFT_CHANGED`. Ngay sau khi một suất được trả lại, các instance khác có thể vẫn báo `SHIFT_FULL` thêm tối đa 1 giây; không bao giờ cấp nhầm suất.
 
 **SG-31: Hủy đăng ký.** AC: trước hạn thì `204`, suất được trả, ca về `OPEN` (BR-11); quá hạn thì `409 CANCEL_DEADLINE_PASSED`.
 
@@ -140,7 +141,7 @@ Mỗi story có tiêu chí nghiệm thu (AC) dạng Given/When/Then. Mã `SG-xx`
 | Mã | Nhóm | Yêu cầu |
 |---|---|---|
 | NFR-01 | Tính đúng đắn | Không overbooking và không vi phạm trùng giờ dưới mọi mức đồng thời (kiểm chứng bằng test concurrency tự động và k6). |
-| NFR-02 | Hiệu năng | Endpoint giành ca có p95 < 300 ms ở 500 request/giây trên VPS mục tiêu (2 instance backend). |
+| NFR-02 | Hiệu năng | Endpoint giành ca có p95 < 300 ms ở 500 request/giây trên VPS mục tiêu (2 instance backend). *Làm rõ ở Sprint 8:* đây là mục tiêu cho tải đều và được kiểm chứng trên VPS. Đợt flash sale dồn dập (1000 lượt giành cùng một thời điểm, SG-80) có mục tiêu riêng: đúng số suất hiện có thành công, 0 lỗi, p95 < 2 s. |
 | NFR-03 | Mở rộng | Backend stateless; thêm instance không cần sửa code. |
 | NFR-04 | Bảo mật | OAuth2/OIDC với JWT; phân quyền theo vai trò; giảm thiểu OWASP Top 10; secrets chỉ qua biến môi trường; production chỉ dùng HTTPS. |
 | NFR-05 | Sẵn sàng | Health check và tự khởi động lại container; v1 không yêu cầu zero-downtime. |
@@ -158,6 +159,8 @@ Mọi lỗi API theo RFC 7807 `application/problem+json`, kèm trường `code`:
 Mã cho quản lý ca (Sprint 2): `SHIFT_CANCELLED` (409), `SHIFT_ALREADY_STARTED` (409), `TEMPLATE_NOT_FOUND` (404), `USER_NOT_FOUND` (404), `PRECONDITION_REQUIRED` (428, thiếu `If-Match`).
 
 Đăng ký (Sprint 3): `REGISTRATION_NOT_FOUND` (404, kể cả khi là đăng ký của người khác). Giành ca khi tải cao (Sprint 3): `CLAIM_BUSY` (503, `Retry-After: 1`), `LOCK_UNAVAILABLE` (503, `Retry-After: 5`).
+
+Sprint 8 (SG-81): `SHIFT_CHANGED` (409, ca bị sửa trong lúc đang giành; xem lại ca rồi giành lại), `SERVICE_BUSY` (503, `Retry-After: 1`, không có kết nối database rảnh trong 1 giây; áp dụng cho mọi endpoint).
 
 Các mã chung cho mọi lỗi còn lại, để client luôn rẽ nhánh theo `code`: `MALFORMED_REQUEST` (400), `UNAUTHORIZED` (401), `FORBIDDEN` (403), `NOT_FOUND` (404), `METHOD_NOT_ALLOWED` (405), `DATA_CONFLICT` (409, ràng buộc CSDL chưa được ánh xạ), `INTERNAL_ERROR` (500, không lộ chi tiết nội bộ). `VALIDATION_FAILED` có thêm `errors: [{field, message}]`.
 

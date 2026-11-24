@@ -49,15 +49,18 @@ class ShiftSlotsAdapter implements ShiftSlots {
 
     @Override
     @Transactional(propagation = Propagation.MANDATORY)
-    public boolean tryReserveSlot(long shiftId) {
+    public Optional<Shift> tryReserveSlot(long shiftId, long expectedVersion) {
         return jdbc.sql("""
                 UPDATE shifts
                    SET booked_slots = booked_slots + 1,
                        status = CASE WHEN booked_slots + 1 >= max_slots THEN 'FULL' ELSE 'OPEN' END
-                 WHERE id = :id AND status = 'OPEN' AND booked_slots < max_slots
-                """)
+                 WHERE id = :id AND version = :version AND status = 'OPEN' AND booked_slots < max_slots
+                RETURNING %s
+                """.formatted(ShiftRepository.COLUMNS))
                 .param("id", shiftId)
-                .update() == 1;
+                .param("version", expectedVersion)
+                .query(ShiftRepository::map)
+                .optional();
     }
 
     @Override

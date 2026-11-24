@@ -70,7 +70,7 @@ class RedisLockProviderTests {
             ShiftLockProvider provider = i % 2 == 0 ? a : b;
             futures.add(pool.submit(() -> {
                 start.await();
-                return provider.executeWithLocks(ShiftLockProvider.claimKeys(7, 42), () -> {
+                return provider.executeWithLocks(List.of("user:7", "shift:42"), () -> {
                     int read = counter[0];
                     Thread.onSpinWait();
                     counter[0] = read + 1;
@@ -129,7 +129,7 @@ class RedisLockProviderTests {
         }));
         held.await(5, TimeUnit.SECONDS);
 
-        assertThatThrownBy(() -> impatient.executeWithLocks(ShiftLockProvider.claimKeys(1, 1), () -> "never"))
+        assertThatThrownBy(() -> impatient.executeWithLocks(List.of("user:1", "shift:1"), () -> "never"))
                 .isInstanceOf(BusinessException.class);
         // user:1 must be free immediately, while shift:1 is still held by the other instance
         assertThat(impatient.executeWithLocks(List.of("user:1"), () -> "free")).isEqualTo("free");

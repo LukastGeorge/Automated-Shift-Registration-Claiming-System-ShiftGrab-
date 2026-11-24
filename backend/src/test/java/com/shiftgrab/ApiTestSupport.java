@@ -30,7 +30,10 @@ import com.shiftgrab.shared.security.KeycloakRealmRoleConverter;
 // E-mails and live updates run asynchronously after commit. A listener still running from the previous test would
 // race with the TRUNCATE below (deadlock seen in CI), so they are off here and on only in the tests about them,
 // which wait for their listeners before finishing.
-@TestPropertySource(properties = { "shiftgrab.notification.enabled=false", "shiftgrab.realtime.enabled=false" })
+// The sold-out memo (SG-81) is off too: TRUNCATE ... RESTART IDENTITY reuses shift ids, so a memo left by one test
+// would refuse the next test's "shift 1". SoldOutMemoApiTests switches it on.
+@TestPropertySource(properties = { "shiftgrab.notification.enabled=false", "shiftgrab.realtime.enabled=false",
+        "shiftgrab.claims.sold-out-memo=0s" })
 public abstract class ApiTestSupport {
 
     protected static final String MANAGER_SUB = "manager-1";
