@@ -27,6 +27,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      # Windows checkouts cannot store the executable bit, so it must live in git. Without it, nginx silently
+      # skipped 30-select-site.sh on Linux and served its default site (found by the SG-82 E2E run).
+      - name: Shell scripts are executable in git
+        run: |
+          missing=$(git ls-files -s -- '*.sh' | awk '$1 != "100755" {print $4}')
+          if [ -n "$missing" ]; then
+            echo "::error::Not executable in git (fix: git update-index --chmod=+x <file>):"
+            echo "$missing"
+            exit 1
+          fi
+
       - name: Lint shell scripts (ShellCheck)
         run: |
           docker run --rm -v "$PWD:/mnt" -w /mnt koalaman/shellcheck:v0.11.0 --shell=sh \
