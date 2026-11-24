@@ -118,8 +118,28 @@ describe('OpenShiftsPage', () => {
     expect(el.querySelector('[data-testid="shift-1"]')?.textContent).toContain('Còn 3/5 suất');
   });
 
-  it('claims a slot and updates the card without reloading', async () => {
+  it('counts a claim once when its live update arrives before the HTTP answer (SG-82 regression)', async () => {
     const { fixture, http, el } = await render();
+    await new Promise((resolve) => setTimeout(resolve)); // live connection established
+    await fixture.whenStable();
+
+    (el.querySelector('[data-testid="claim-1"]') as HTMLButtonElement).click();
+    // The server broadcasts the new absolute counters (2 → 3 booked) and the WebSocket wins the race...
+    stomp.emit({ shiftId: 1, bookedSlots: 3, maxSlots: 5, availableSlots: 2, status: 'OPEN', observedAt: '2030-01-01T00:00:01Z' });
+    // ...then the 201 arrives. It must not add +1 on top.
+    claimRequest(http, 1).flush({ id: 7, shiftId: 1, status: 'CONFIRMED' });
+    await fixture.whenStable();
+
+    const card = el.querySelector('[data-testid="shift-1"]');
+    expect(card?.textContent).toContain('Bạn đã giành');
+    expect(card?.textContent).toContain('Còn 2/5 suất');
+  });
+
+  it('claims a slot and updates the card itself while the live connection is down', async () => {
+    const { fixture, http, el } = await render();
+    await new Promise((resolve) => setTimeout(resolve));
+    stomp.drop();
+    await fixture.whenStable();
 
     (el.querySelector('[data-testid="claim-1"]') as HTMLButtonElement).click();
     claimRequest(http, 1).flush({ id: 7, shiftId: 1, status: 'CONFIRMED' });

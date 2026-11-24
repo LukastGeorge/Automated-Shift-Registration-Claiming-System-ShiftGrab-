@@ -129,8 +129,13 @@ docker build -t localtest/shiftgrab-frontend:dev frontend
 # .env.prod with IMAGE_PREFIX=localtest and SHIFTGRAB_VERSION=dev
 docker compose -f infra/docker/docker-compose.prod.yml --env-file <file> up -d
 node infra/scripts/smoke-test.mjs http://localhost:8088 <manager-password> <staff-password>
+# Browser journey (SG-82): see e2e/README.md
+(cd e2e && npm ci && npx playwright install chromium && \
+  E2E_MANAGER_PASSWORD=<manager-password> E2E_STAFF_PASSWORD=<staff-password> npx playwright test)
 docker compose -f infra/docker/docker-compose.prod.yml --env-file <file> down -v   # -v deletes the test data
 ```
+
+The same browser journey runs in CI (`e2e.yml`): required on every pull request into `main`, nightly on `develop`, and on pull requests labelled `e2e`. A failed run uploads the Playwright trace, screenshots, video and container logs as the `e2e-report` artifact.
 
 ## Infrastructure CI / CI cho hạ tầng
 

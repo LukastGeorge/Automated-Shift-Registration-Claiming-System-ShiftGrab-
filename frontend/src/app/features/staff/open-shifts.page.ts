@@ -163,10 +163,15 @@ export class OpenShiftsPage implements OnInit {
       next: () => {
         this.claiming.set(null);
         this.mine.update((ids) => new Set([...ids, shift.id]));
-        this.patch(shift.id, (s) => {
-          const available = s.availableSlots - 1;
-          return { ...s, bookedSlots: s.bookedSlots + 1, availableSlots: available, status: available === 0 ? 'FULL' : s.status };
-        });
+        // While live updates flow, the server's absolute counters are the truth: the update for this very claim may
+        // already have arrived before this HTTP answer, and adding +1 on top of it counted the claim twice (found by
+        // the SG-82 E2E test). Only without a live connection do we count our own claim locally.
+        if (!this.live.connected()) {
+          this.patch(shift.id, (s) => {
+            const available = s.availableSlots - 1;
+            return { ...s, bookedSlots: s.bookedSlots + 1, availableSlots: available, status: available === 0 ? 'FULL' : s.status };
+          });
+        }
         this.notify.success('shifts.claimed', { name: shift.name });
       },
       error: (err: unknown) => {
