@@ -41,6 +41,22 @@ anything fails. It runs on:
 - nightly on `develop`;
 - on demand.
 
+## Regenerate the README screenshots and GIF (SG-91)
+
+`docs/` holds scripts that seed realistic data through the API and capture `docs/images`. They are not tests and do not run in CI.
+
+```bash
+# a FRESH stack from the README quick start (down -v first), then:
+npx playwright test --config docs.config.ts docs/capture.spec.ts docs/demo-video.spec.ts
+E2E_GRAFANA_PASSWORD=local-grafana-admin npx playwright test --config docs.config.ts docs/grafana.spec.ts
+# video → GIF (two passes: a palette, then the GIF), from the repository root:
+docker run --rm -v "$PWD/docs/images:/w" -w /w jrottenberg/ffmpeg:7.1-alpine -y -i _demo.webm \
+  -vf "fps=10,scale=880:-1:flags=lanczos,palettegen=stats_mode=diff" _palette.png
+docker run --rm -v "$PWD/docs/images:/w" -w /w jrottenberg/ffmpeg:7.1-alpine -y -i _demo.webm -i _palette.png \
+  -lavfi "fps=10,scale=880:-1:flags=lanczos[x];[x][1:v]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle" demo-live-claim.gif
+rm docs/images/_demo.webm docs/images/_palette.png
+```
+
 ## Found by this test
 
 The first run caught a real bug that the unit tests missed. When the live update of a claim reached the browser

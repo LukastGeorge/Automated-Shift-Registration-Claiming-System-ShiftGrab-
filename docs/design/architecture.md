@@ -90,7 +90,7 @@ Rules (verified by `ApplicationModules.verify()` in a test):
 - Chỉ gọi đồng bộ khi bên gọi cần kết quả để làm tiếp (ví dụ `registration` cần dữ liệu ca). Tác vụ phụ (email, WebSocket, audit) phản ứng với **domain event** qua `@TransactionalEventListener(phase = AFTER_COMMIT)`, nên không chạy khi giành ca bị rollback và không làm chậm request (SG-41).
 - Không có phụ thuộc vòng.
 
-## 4. Claim flow — the core of the system (SG-30)
+## 4. Claim flow — the core of the system (SG-30, revised in SG-81)
 
 ```mermaid
 sequenceDiagram
@@ -102,38 +102,46 @@ sequenceDiagram
   participant DB as PostgreSQL
   participant EV as Event listeners
   S->>API: POST /api/v1/shifts/{id}/registrations (JWT)
-  API->>SVC: claim(shiftId, userId)
-  SVC->>DB: fast path: shift already FULL? → SHIFT_FULL without locking
-  SVC->>L: lock user:{userId} then shift:{shiftId} (fixed order)
-  L-->>SVC: locks acquired (wait ≤ 3 s, lease 10 s)
-  SVC->>DB: BEGIN
-  SVC->>DB: load shift, check BR-05 (open window)
-  SVC->>DB: sum week hours, check BR-04
-  SVC->>DB: UPDATE shifts SET booked_slots = booked_slots + 1<br/>WHERE id = ? AND booked_slots < max_slots AND status = 'OPEN'
-  alt 0 rows updated
+  API->>SVC: claim(shiftId)
+  SVC->>SVC: fast path: sold-out memo, else read shift → FULL? SHIFT_FULL, no lock, no transaction
+  SVC->>L: lock user:{userId}
+  L-->>SVC: lock acquired (wait ≤ 3 s, lease 10 s)
+  SVC->>DB: BEGIN; SET LOCAL lock_timeout 1 s, statement_timeout 2 s
+  SVC->>DB: read shift (version v); check BR-05 open window, BR-02 already held, BR-03 overlap, BR-04 week hours
+  SVC->>DB: UPDATE shifts SET booked_slots = booked_slots + 1<br/>WHERE id = ? AND version = v AND booked_slots < max_slots AND status = 'OPEN'<br/>RETURNING * (row lock orders claims on the same shift)
+  alt 0 rows, version unchanged
     SVC->>DB: ROLLBACK
     SVC-->>API: SHIFT_FULL (409)
+  else 0 rows, a manager changed the shift
+    SVC->>DB: re-check the rules once on the new version (then 409 SHIFT_CHANGED if it changed again)
   else 1 row updated
-    SVC->>DB: INSERT shift_registrations (time_range, rate snapshot)
+    SVC->>DB: INSERT shift_registrations (times from RETURNING, rate snapshot)
     Note over DB: partial UNIQUE (BR-02) and<br/>EXCLUDE overlap (BR-03) enforced here
-    SVC->>DB: COMMIT
-    SVC-->>EV: ShiftClaimed (after commit)
+    SVC->>DB: outbox + audit rows, COMMIT
+    SVC-->>EV: ShiftClaimed (after commit: e-mail, live update)
     SVC-->>API: 201 Created
   end
   SVC->>L: unlock (finally)
 ```
 
+A `lock_timeout`, `statement_timeout` or deadlock answers `503 CLAIM_BUSY` with `Retry-After`; nothing was written.
+
 ### Three layers of defence against overbooking (BR-01, NFR-01)
 
 | Layer | Mechanism | What it protects against | If it is missing |
 |---|---|---|---|
-| 1. Distributed lock | Redisson lock per user and per shift | Serialises claims so business-rule checks (BR-04) read a consistent state; keeps contention off the database | Weekly-hour limit could be exceeded by two parallel claims of the same user |
-| 2. Atomic conditional update | `UPDATE ... WHERE booked_slots < max_slots` | Overbooking even if the lock expires (GC pause, Redis failover) | Lock expiry → two transactions both see a free slot |
+| 1. Distributed lock | Redisson lock per **user** | One person's multi-row rules (BR-02..BR-04) read a consistent state across instances | Two parallel claims of the same user could exceed the weekly-hour limit |
+| 2. Atomic conditional update | `UPDATE ... WHERE booked_slots < max_slots AND version = ?` | Overbooking (its row lock also orders claims on one shift), and booking a shift a manager just changed | Two transactions both see a free slot |
 | 3. Database constraints | `CHECK (booked_slots <= max_slots)`, partial `UNIQUE`, `EXCLUDE USING gist` | Any bug in application code; direct SQL | Data corruption becomes possible |
 
-Lock ordering (user → shift) prevents deadlocks between two claims that would otherwise lock in different orders. The lock lease (10 s) is a safety net, not a correctness guarantee — that is why layers 2 and 3 exist.
+Until SG-81 layer 1 also locked each shift. The k6 flash sale showed that this serialised every claim of a shift through Redis (p95 6.1 s, 138 errors) without adding correctness, which layer 2 already provides. See the [ADR-0004 revision](../adr/0004-redis-distributed-lock.md). The lock lease (10 s) is a safety net, not a correctness guarantee; that is why layers 2 and 3 exist.
 
-🇻🇳 **Ba lớp phòng thủ chống overbooking:** (1) khóa phân tán Redisson theo user và theo ca, giúp tuần tự hóa việc kiểm tra quy tắc (BR-04) và giảm tải cho DB; (2) câu lệnh `UPDATE ... WHERE booked_slots < max_slots` nguyên tử, vẫn đúng kể cả khi lock hết hạn (GC pause, Redis failover); (3) ràng buộc database (`CHECK`, partial `UNIQUE`, `EXCLUDE`) chặn mọi lỗi ở tầng ứng dụng. Thứ tự khóa cố định user → ca giúp tránh deadlock. Thời hạn lock 10 giây chỉ là lưới an toàn, không phải bảo đảm tính đúng đắn; đó là lý do cần lớp 2 và 3.
+🇻🇳 **Ba lớp phòng thủ chống overbooking:**
+1. Khóa phân tán Redisson **theo user**, giúp các quy tắc của một người (BR-02..BR-04) đọc được dữ liệu nhất quán giữa các instance.
+2. Câu lệnh `UPDATE ... WHERE booked_slots < max_slots AND version = ?` chạy nguyên tử. Khóa dòng của nó cũng xếp hàng các lượt giành cùng một ca, và nó không cho đặt vào một ca mà quản lý vừa sửa.
+3. Ràng buộc database (`CHECK`, partial `UNIQUE`, `EXCLUDE`) chặn mọi lỗi ở tầng ứng dụng.
+
+Trước SG-81, lớp 1 còn khóa theo ca. Đo tải cho thấy cách đó bắt mọi lượt giành phải đi tuần tự qua Redis mà không làm hệ thống đúng hơn, nên đã bỏ (xem sửa đổi ADR-0004).
 
 ## 5. Data model (ERD)
 
