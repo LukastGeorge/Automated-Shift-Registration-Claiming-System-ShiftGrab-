@@ -56,6 +56,19 @@ class CreateShiftApiTests extends ApiTestSupport {
     }
 
     @Test
+    @DisplayName("SG-92: a name with a line break is refused (it would reach e-mail subjects, CSV and logs)")
+    void rejectsControlCharactersInName() throws Exception {
+        create("""
+                {"name": "Morning\\r\\nBcc: attacker@example.com", "startAt": "2030-01-07T08:00:00+07:00",
+                 "endAt": "2030-01-07T12:00:00+07:00", "registrationOpenAt": "2030-01-01T08:00:00+07:00", "maxSlots": 4}
+                """)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("name"))
+                .andExpect(jsonPath("$.errors[0].message").value("must not contain line breaks or control characters"));
+        assertThat(count()).isZero();
+    }
+
+    @Test
     @DisplayName("AC2: end before start and opening after start are rejected")
     void rejectsInconsistentTimes() throws Exception {
         create("""

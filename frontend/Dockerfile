@@ -13,6 +13,7 @@ RUN npm run build
 # ---- runtime: nginx as an unprivileged user (port 8080) ------------------------------------------------------
 FROM nginxinc/nginx-unprivileged:1.29-alpine
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY security-headers.conf /etc/nginx/shiftgrab/security-headers.conf
 COPY --from=build /src/dist/shiftgrab-web/browser /usr/share/nginx/html
 COPY --chmod=755 docker/40-write-config.sh /docker-entrypoint.d/40-write-config.sh
 USER root
