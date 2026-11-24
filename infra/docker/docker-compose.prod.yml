@@ -226,7 +226,7 @@ services:
           memory: 256m
 
   grafana:
-    image: grafana/grafana:13.2.5
+    image: grafana/grafana:13.3.1
     restart: unless-stopped
     logging: *logging
     depends_on: [prometheus]
