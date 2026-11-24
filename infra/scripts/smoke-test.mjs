@@ -1,5 +1,6 @@
-// End-to-end smoke test of the production stack through the edge proxy (one origin).
-// Usage: node e2e-prod.mjs http://localhost:8088 manager123 staff123
+// API-level smoke test of the production stack through the edge proxy (one origin); used after each deployment.
+// The browser-level journey is in e2e/ (Playwright, SG-82).
+// Usage: node infra/scripts/smoke-test.mjs http://localhost:8088 manager123 staff123
 import crypto from 'node:crypto';
 
 const BASE = process.argv[2] ?? 'http://localhost:8088';

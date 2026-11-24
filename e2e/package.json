@@ -1,0 +1,13 @@
+{
+  "name": "shiftgrab-e2e",
+  "private": true,
+  "description": "SG-82: Playwright end-to-end smoke tests against a running ShiftGrab stack (real Keycloak login).",
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.65.0"
+  }
+}
