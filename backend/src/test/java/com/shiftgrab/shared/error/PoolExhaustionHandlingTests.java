@@ -51,6 +51,13 @@ class PoolExhaustionHandlingTests {
         assertThat(response.getBody().getProperties()).containsEntry("code", "INTERNAL_ERROR");
     }
 
+    @Test
+    void requestValuesCannotForgeLogLines() {
+        assertThat(GlobalExceptionHandler.forLog("/api/v1/x\r\n2026-11-24 INFO forged admin login"))
+                .isEqualTo("/api/v1/x__2026-11-24 INFO forged admin login");
+        assertThat(GlobalExceptionHandler.forLog(null)).isNull();
+    }
+
     private static void assertServiceBusy(ResponseEntity<ProblemDetail> response) {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
         assertThat(response.getHeaders().getFirst(HttpHeaders.RETRY_AFTER)).isEqualTo("1");

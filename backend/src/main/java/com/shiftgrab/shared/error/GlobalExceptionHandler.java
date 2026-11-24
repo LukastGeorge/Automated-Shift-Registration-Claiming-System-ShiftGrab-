@@ -86,8 +86,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         if (!causedByPoolTimeout(ex)) {
             return ResponseEntity.internalServerError().body(handleUnexpected(ex, request));
         }
-        log.warn("No database connection available for {} {}: {}", request.getMethod(), request.getRequestURI(),
-                ex.getMessage());
+        log.warn("No database connection available for {} {}: {}", forLog(request.getMethod()),
+                forLog(request.getRequestURI()), ex.getMessage());
         return handleBusiness(new BusinessException(ErrorCode.SERVICE_BUSY,
                 "The service is busy right now. Please retry in a moment."), request);
     }
@@ -115,8 +115,16 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     /** Last resort: log the cause, never leak it to the client. */
     @ExceptionHandler(Exception.class)
     ProblemDetail handleUnexpected(Exception ex, HttpServletRequest request) {
-        log.error("Unhandled exception on {} {}", request.getMethod(), request.getRequestURI(), ex);
+        log.error("Unhandled exception on {} {}", forLog(request.getMethod()), forLog(request.getRequestURI()), ex);
         return Problems.of(ErrorCode.INTERNAL_ERROR, "An unexpected error occurred.", request.getRequestURI());
+    }
+
+    /**
+     * Request values are attacker-controlled: a URL containing an encoded CR/LF would otherwise start a forged log
+     * line (log injection, OWASP A09; flagged by CodeQL on SG-81). Line breaks become a visible {@code _}.
+     */
+    static String forLog(String value) {
+        return value == null ? null : value.replaceAll("[\r\n]", "_");
     }
 
     @Override
