@@ -210,7 +210,7 @@ services:
 
   # Monitoring (SG-72). Prometheus is internal; Grafana is served by the edge at /grafana/.
   prometheus:
-    image: prom/prometheus:v3.15.1
+    image: prom/prometheus:v3.16.0
     restart: unless-stopped
     logging: *logging
     command:
