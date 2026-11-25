@@ -130,9 +130,16 @@ class MultiInstanceClaimTests {
                         "--spring.datasource.username=" + postgres.getUsername(),
                         "--spring.datasource.password=" + postgres.getPassword(),
                         "--shiftgrab.lock.redis-address=redis://" + redis.getHost() + ":" + redis.getMappedPort(6379),
-                        // AC7 asserts SHIFT_FULL for every loser, so nobody may give up waiting for the lock here
+                        // AC7 asserts SHIFT_FULL for every loser, so nobody may give up waiting here. Since SG-81 a
+                        // claim can give up at three points, not one: the Redis lock, a pooled connection (Hikari,
+                        // 1 s -> SERVICE_BUSY) and the shift row (lock_timeout, 1 s -> CLAIM_BUSY). Those fail-fast
+                        // budgets are production behaviour tested elsewhere (PoolExhaustionHandlingTests,
+                        // ClaimRaceTests); on a slow machine they turned one of the 95 losers into a 503 here.
                         "--shiftgrab.lock.wait-time=20s",
                         "--spring.datasource.hikari.maximum-pool-size=20",
+                        "--spring.datasource.hikari.connection-timeout=30000",
+                        "--shiftgrab.claims.lock-timeout=20s",
+                        "--shiftgrab.claims.statement-timeout=30s",
                         // This suite is about claims; e-mails and scheduled jobs are covered elsewhere.
                         "--shiftgrab.notification.enabled=false",
                         "--shiftgrab.realtime.enabled=false",

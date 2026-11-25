@@ -27,6 +27,9 @@ USER shiftgrab
 EXPOSE 8080
 # Heap follows the container memory limit; crash fast on OOM so the orchestrator restarts a clean process.
 ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75 -XX:+ExitOnOutOfMemoryError"
-HEALTHCHECK --interval=15s --timeout=3s --start-period=60s --retries=3 \
+# Start period: ~35 s on an idle laptop, but two backends and Keycloak starting together on a busy machine (or a
+# small VPS) took longer, and "unhealthy" after 60 s + 3 x 15 s failed `compose up --wait`. A healthy answer
+# during the start period counts at once, so a longer period never delays a fast start.
+HEALTHCHECK --interval=15s --timeout=3s --start-period=120s --retries=3 \
   CMD wget -qO- http://127.0.0.1:8080/actuator/health/liveness | grep -q '"UP"' || exit 1
 ENTRYPOINT ["java", "org.springframework.boot.loader.launch.JarLauncher"]

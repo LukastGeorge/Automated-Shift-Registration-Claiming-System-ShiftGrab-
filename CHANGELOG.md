@@ -4,6 +4,30 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [1.0.1] - 2026-11-25 — Reliable tests
+
+A patch release: no change to the application's behaviour. The tests now give the same verdict on a busy machine
+as on a quiet one, and the flash sale runs in CI.
+
+### Added
+- **Load test in CI** ([`.github/workflows/load-test.yml`](.github/workflows/load-test.yml), [#141](../../pull/141)): a
+  200-staff flash sale through nginx and both backends on every pull request into `main`, nightly on `develop`, and on
+  demand. One command for local runs and CI: [`load-tests/run-flash-sale.sh`](load-tests/run-flash-sale.sh).
+- **Database check after every load test** ([`load-tests/assert-db.sql`](load-tests/assert-db.sql)): no overbooking,
+  slot counters equal confirmed rows, no duplicate claim, and as many claims in the database as `201` answers.
+
+### Changed
+- **The flash sale gates on correctness**, not on a machine-dependent latency ([#141](../../pull/141)): a `503` with
+  `Retry-After` (the SG-81 fail-fast answer) is retried like a person would, and every staff member must end with
+  `201` or `409 SHIFT_FULL`. Latency is still reported; `P95_MS` re-enables a latency gate on a quiet server.
+  5 consecutive 1000-staff runs passed ([`load-tests/results/03-reliability.md`](load-tests/results/03-reliability.md)).
+- Backend image health check: start period 60 s → 120 s, so a slow start on a busy host is not reported unhealthy
+  (a healthy answer still counts at once).
+
+### Fixed
+- `MultiInstanceClaimTests` failed now and then on slow machines (`SERVICE_BUSY`): it predated the SG-81 pool and
+  row-lock timeouts ([#140](../../pull/140)). The backend suite then passed 3 times in a row.
+
 ## [1.0.0] - 2026-11-24 — Sprint 9: hardening, operations and documentation
 
 First stable release. The complete feature set of the SRS is in place, tested at every level and deploy-ready.
