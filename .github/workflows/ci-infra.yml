@@ -8,12 +8,14 @@ on:
     paths:
       - "infra/**"
       - "frontend/docker/**"
+      - "load-tests/**"
       - ".github/workflows/ci-infra.yml"
   pull_request:
     branches: [main, develop]
     paths:
       - "infra/**"
       - "frontend/docker/**"
+      - "load-tests/**"
       - ".github/workflows/ci-infra.yml"
 
 permissions:
@@ -42,6 +44,8 @@ jobs:
         run: |
           docker run --rm -v "$PWD:/mnt" -w /mnt koalaman/shellcheck:v0.11.0 --shell=sh \
             infra/scripts/*.sh infra/backup/*.sh infra/nginx/*.sh infra/postgres/init/*.sh frontend/docker/*.sh
+          # Load-test runner: bash (arrays), so it is checked as bash
+          docker run --rm -v "$PWD:/mnt" -w /mnt koalaman/shellcheck:v0.11.0 load-tests/*.sh
 
       - name: Validate Compose files
         run: |

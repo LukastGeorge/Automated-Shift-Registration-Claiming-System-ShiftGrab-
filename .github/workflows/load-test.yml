@@ -1,0 +1,116 @@
+name: Load test
+
+# A small flash sale (200 staff, 2 shifts x 5 slots) through nginx and both backends of the production stack built
+# from this commit. It checks correctness only: exactly 10 claims, every staff member ends with 201 or SHIFT_FULL
+# (retrying 503 + Retry-After like a person would), and the database agrees with the HTTP answers. Latency is
+# reported in the summary but not gated: shared GitHub runners are too noisy for a p95 target (see
+# load-tests/results/03-reliability.md). The full 1000-staff run stays a manual measurement (load-tests/README.md).
+on:
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "30 19 * * *" # 02:30 Vietnam time, after the nightly E2E run
+  workflow_dispatch:
+    inputs:
+      users:
+        description: Staff racing for the slots
+        default: "200"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: load-test-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  flash-sale:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          # Scheduled runs start from the default branch (main); the nightly check is about develop.
+          ref: ${{ github.event_name == 'schedule' && 'develop' || '' }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+
+      - name: Build images from this commit
+        run: |
+          docker build -t loadtest/shiftgrab-backend:ci backend
+          docker build -t loadtest/shiftgrab-frontend:ci frontend
+
+      # Throwaway secrets for a throwaway stack. Staff and manager passwords come from the generated load-test realm.
+      - name: Write the stack environment
+        run: |
+          for name in db kcdb kcadmin grafana; do
+            value=$(openssl rand -hex 16)
+            echo "::add-mask::$value"
+            printf -v "$name" '%s' "$value"
+          done
+          cat > "$RUNNER_TEMP/stack.env" <<EOF
+          DOMAIN=localhost
+          SHIFTGRAB_PUBLIC_URL=http://localhost:8088
+          IMAGE_PREFIX=loadtest
+          SHIFTGRAB_VERSION=ci
+          DB_PASSWORD=$db
+          KEYCLOAK_DB_PASSWORD=$kcdb
+          KEYCLOAK_ADMIN=admin
+          KEYCLOAK_ADMIN_PASSWORD=$kcadmin
+          GRAFANA_ADMIN_PASSWORD=$grafana
+          GRAFANA_ANONYMOUS=false
+          DEMO_MANAGER_PASSWORD=unused
+          DEMO_STAFF_PASSWORD=unused
+          BACKUP_DIR=backups
+          EDGE_HTTP_PORT=8088
+          EDGE_HTTPS_PORT=8443
+          EOF
+
+      - name: Run the flash sale and check the database
+        env:
+          KEEP_STACK: "1" # removed in the last step, after the logs are collected
+          SETTLE_SECONDS: "30"
+          USERS: ${{ inputs.users || '200' }} # through the environment, never pasted into the script
+        run: |
+          [[ "$USERS" =~ ^[0-9]+$ ]] || { echo "users must be a number" >&2; exit 1; }
+          load-tests/run-flash-sale.sh "$RUNNER_TEMP/stack.env" "$USERS" 2 5
+
+      - name: Summary
+        if: always()
+        run: |
+          [ -f load-tests/.generated/summary.json ] || exit 0
+          node -e '
+            const m = require("./load-tests/.generated/summary.json").metrics;
+            const n = (k) => (m[k] ? m[k].count : 0);
+            const t = m["http_req_duration{name:claim}"] || {};
+            const ms = (v) => (v === undefined ? "-" : Math.round(v) + " ms");
+            console.log("| Claims succeeded | SHIFT_FULL | Other final answers | 503 answers (retried) | Claim p95 (first attempt) | max |");
+            console.log("|---:|---:|---:|---:|---:|---:|");
+            console.log(`| ${n("claims_succeeded")} | ${n("claims_shift_full")} | ${n("claims_other_outcome")} | ${n("claims_busy_answers")} | ${ms(t["p(95)"])} | ${ms(t.max)} |`);
+          ' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Collect container logs
+        if: failure()
+        run: |
+          docker compose -f infra/docker/docker-compose.prod.yml -f load-tests/docker-compose.loadtest.yml \
+            --env-file "$RUNNER_TEMP/stack.env" logs --no-color > load-tests/stack.log 2>&1 || true
+
+      - name: Upload logs
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: load-test-logs
+          path: |
+            load-tests/stack.log
+            load-tests/.generated/summary.json
+          retention-days: 14
+
+      - name: Stop the stack
+        if: always()
+        run: |
+          docker compose -f infra/docker/docker-compose.prod.yml -f load-tests/docker-compose.loadtest.yml \
+            --env-file "$RUNNER_TEMP/stack.env" down -v || true
