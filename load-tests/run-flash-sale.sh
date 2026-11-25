@@ -58,6 +58,9 @@ echo "settling for ${SETTLE_SECONDS}s"
 sleep "$SETTLE_SECONDS"
 
 rm -f "$SUMMARY"
+# The k6 image runs as a non-root user: on Linux it cannot write into a folder owned by the runner's user
+# (found by the first CI run; Docker Desktop on Windows hides this).
+chmod a+rwx load-tests/.generated
 root=$(pwd -W 2> /dev/null || pwd) # Windows path for Docker Desktop when run from Git Bash
 k6_env=(-e BASE=http://edge -e "USERS=$USERS" -e "SHIFTS=$SHIFTS" -e "SLOTS=$SLOTS")
 if [ -n "${P95_MS:-}" ]; then
