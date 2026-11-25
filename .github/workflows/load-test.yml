@@ -5,9 +5,14 @@ name: Load test
 # (retrying 503 + Retry-After like a person would), and the database agrees with the HTTP answers. Latency is
 # reported in the summary but not gated: shared GitHub runners are too noisy for a p95 target (see
 # load-tests/results/03-reliability.md). The full 1000-staff run stays a manual measurement (load-tests/README.md).
+#
+# Runs on every pull request into main, on pull requests into develop labelled "load-test", nightly on develop
+# (scheduled workflows run from main's copy of this file, so the nightly run starts after the next release), and
+# on demand.
 on:
   pull_request:
-    branches: [main]
+    branches: [main, develop]
+    types: [opened, synchronize, reopened, labeled]
   schedule:
     - cron: "30 19 * * *" # 02:30 Vietnam time, after the nightly E2E run
   workflow_dispatch:
@@ -25,6 +30,10 @@ concurrency:
 
 jobs:
   flash-sale:
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.base_ref == 'main' ||
+      contains(github.event.pull_request.labels.*.name, 'load-test')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
