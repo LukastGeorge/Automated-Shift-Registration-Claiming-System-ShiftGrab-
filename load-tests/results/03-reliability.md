@@ -62,7 +62,9 @@ successful on retry), which is the kind of variation the new gates no longer tur
 ## In CI
 
 [`.github/workflows/load-test.yml`](../../.github/workflows/load-test.yml) runs the CI size (200 staff, 2 shifts ×
-5 slots) nightly on `develop`, on every pull request into `main`, and on demand. It gates on the same correctness
+5 slots) nightly on `develop`, on every pull request into `main`, on pull requests into `develop` labelled
+`load-test`, and on demand (the nightly schedule uses `main`'s copy of the workflow, so it starts with the next
+release). It gates on the same correctness
 checks and writes the counts and latency to the job summary. The full 1000-staff run stays a manual measurement.
 
 ## Also found while making the tests reliable
